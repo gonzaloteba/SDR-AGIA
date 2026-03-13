@@ -113,11 +113,16 @@ export async function POST(request: NextRequest) {
         now
       )
       if (daysUntilPhaseChange >= 0 && daysUntilPhaseChange <= 3 && client.current_phase < 3) {
+        const phaseNames: Record<number, string> = {
+          2: 'Fase 2 - Reintroducción',
+          3: 'Fase 3 - Low-Carb Flexible',
+        }
+        const nextPhase = client.current_phase + 1
         alertsToCreate.push({
           client_id: client.id,
           type: 'phase_change',
-          severity: 'medium',
-          message: `${client.first_name} ${client.last_name} cambia a fase ${client.current_phase + 1} en ${daysUntilPhaseChange} días`,
+          severity: daysUntilPhaseChange <= 1 ? 'high' : 'medium',
+          message: `${client.first_name} ${client.last_name} cambia a ${phaseNames[nextPhase] || `fase ${nextPhase}`} en ${daysUntilPhaseChange} días. Preparar indicaciones de alimentación.`,
         })
       }
     }

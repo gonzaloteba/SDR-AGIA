@@ -8,21 +8,25 @@ export const PHASE_LABELS: Record<NutritionPhase, string> = {
 
 export const PHASE_DURATIONS_DAYS: Record<NutritionPhase, number> = {
   1: 7,
-  2: 28,
-  3: 55, // remaining of 90 days
+  2: 30,
+  3: 53, // remaining of 90 days
 }
+
+export const PHASE_ALERT_DAYS_BEFORE = 3
 
 export const STATUS_LABELS: Record<ClientStatus, string> = {
   active: 'Activo',
+  completed: 'Concluido',
+  renewed: 'Renovado',
   cancelled: 'Cancelado',
-  completed: 'Completado',
   success_case: 'Caso de Éxito',
 }
 
 export const STATUS_COLORS: Record<ClientStatus, string> = {
   active: 'bg-green-100 text-green-800',
-  cancelled: 'bg-red-100 text-red-800',
   completed: 'bg-blue-100 text-blue-800',
+  renewed: 'bg-teal-100 text-teal-800',
+  cancelled: 'bg-red-100 text-red-800',
   success_case: 'bg-purple-100 text-purple-800',
 }
 

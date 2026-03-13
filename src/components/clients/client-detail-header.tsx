@@ -1,8 +1,8 @@
 import Link from 'next/link'
 import { ArrowLeft, ExternalLink, Edit } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { STATUS_LABELS, STATUS_COLORS, PHASE_LABELS } from '@/lib/constants'
+import { PHASE_LABELS } from '@/lib/constants'
 import { getDaysRemaining } from '@/lib/health-score'
+import { StatusDropdown } from '@/components/clients/status-dropdown'
 import type { Client, NutritionPhase } from '@/lib/types'
 
 interface ClientDetailHeaderProps {
@@ -28,14 +28,11 @@ export function ClientDetailHeader({ client, alertCount }: ClientDetailHeaderPro
               <h1 className="text-2xl font-bold">
                 {client.first_name} {client.last_name}
               </h1>
-              <span
-                className={cn(
-                  'rounded-full px-2.5 py-0.5 text-xs font-medium',
-                  STATUS_COLORS[client.status]
-                )}
-              >
-                {STATUS_LABELS[client.status]}
-              </span>
+              <StatusDropdown
+                clientId={client.id}
+                currentStatus={client.status}
+                size="md"
+              />
               {alertCount > 0 && (
                 <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800">
                   {alertCount} alerta{alertCount > 1 ? 's' : ''}

@@ -48,7 +48,7 @@ export default async function DashboardPage() {
     supabase
       .from('clients')
       .select('status')
-      .in('status', ['active', 'completed', 'success_case', 'cancelled']),
+      .in('status', ['active', 'completed', 'renewed', 'success_case', 'cancelled']),
   ])
 
   const activeClients = clients || []

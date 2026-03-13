@@ -4,7 +4,8 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Search, Plus, Eye } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { PHASE_LABELS, STATUS_LABELS, STATUS_COLORS, HEALTH_COLORS } from '@/lib/constants'
+import { PHASE_LABELS, HEALTH_COLORS } from '@/lib/constants'
+import { StatusDropdown } from '@/components/clients/status-dropdown'
 import type { ClientWithHealth, NutritionPhase, HealthScore } from '@/lib/types'
 
 interface ClientTableProps {
@@ -47,7 +48,8 @@ export function ClientTable({ clients }: ClientTableProps) {
         >
           <option value="all">Todos los estados</option>
           <option value="active">Activo</option>
-          <option value="completed">Completado</option>
+          <option value="completed">Concluido</option>
+          <option value="renewed">Renovado</option>
           <option value="cancelled">Cancelado</option>
           <option value="success_case">Caso de Éxito</option>
         </select>
@@ -119,14 +121,10 @@ export function ClientTable({ clients }: ClientTableProps) {
                     </p>
                   </td>
                   <td className="px-4 py-3">
-                    <span
-                      className={cn(
-                        'inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium',
-                        STATUS_COLORS[client.status]
-                      )}
-                    >
-                      {STATUS_LABELS[client.status]}
-                    </span>
+                    <StatusDropdown
+                      clientId={client.id}
+                      currentStatus={client.status}
+                    />
                   </td>
                   <td className="px-4 py-3 text-sm">
                     {PHASE_LABELS[client.current_phase as NutritionPhase]}
