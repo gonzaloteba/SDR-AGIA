@@ -13,7 +13,6 @@ export default async function ClientsPage() {
     { data: clients },
     { data: latestCheckins },
     { data: callsThisMonth },
-    { data: pendingAlerts },
   ] = await Promise.all([
     supabase.from('clients').select('*').order('first_name'),
     supabase
@@ -24,7 +23,6 @@ export default async function ClientsPage() {
       .from('calls')
       .select('client_id')
       .gte('call_date', monthStart),
-    supabase.from('alerts').select('id').eq('is_resolved', false),
   ])
 
   // Build lookup maps
@@ -61,7 +59,7 @@ export default async function ClientsPage() {
 
   return (
     <div>
-      <Header title="Clientes" alertCount={pendingAlerts?.length || 0} />
+      <Header title="Clientes" />
       <div className="p-6">
         <ClientTable clients={enrichedClients} />
       </div>

@@ -2,11 +2,11 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Search, Plus, Eye } from 'lucide-react'
+import { Search, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PHASE_LABELS, HEALTH_COLORS } from '@/lib/constants'
 import { StatusDropdown } from '@/components/clients/status-dropdown'
-import type { ClientWithHealth, NutritionPhase, HealthScore } from '@/lib/types'
+import type { ClientWithHealth, NutritionPhase } from '@/lib/types'
 
 interface ClientTableProps {
   clients: ClientWithHealth[]
@@ -84,13 +84,12 @@ export function ClientTable({ clients }: ClientTableProps) {
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Días restantes</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Último check-in</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Llamadas/mes</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground w-16"></th>
             </tr>
           </thead>
           <tbody className="divide-y">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-12 text-center text-sm text-muted-foreground">
+                <td colSpan={7} className="px-4 py-12 text-center text-sm text-muted-foreground">
                   No se encontraron clientes
                 </td>
               </tr>
@@ -116,9 +115,12 @@ export function ClientTable({ clients }: ClientTableProps) {
                     />
                   </td>
                   <td className="px-4 py-3">
-                    <p className="font-medium">
+                    <Link
+                      href={`/dashboard/clients/${client.id}`}
+                      className="font-medium hover:underline"
+                    >
                       {client.first_name} {client.last_name}
-                    </p>
+                    </Link>
                   </td>
                   <td className="px-4 py-3">
                     <StatusDropdown
@@ -139,14 +141,6 @@ export function ClientTable({ clients }: ClientTableProps) {
                   </td>
                   <td className="px-4 py-3 text-sm">
                     {client.calls_this_month}/3
-                  </td>
-                  <td className="px-4 py-3">
-                    <Link
-                      href={`/dashboard/clients/${client.id}`}
-                      className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground inline-flex"
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Link>
                   </td>
                 </tr>
               ))

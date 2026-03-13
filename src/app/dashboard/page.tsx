@@ -3,10 +3,9 @@ import { Header } from '@/components/layout/header'
 import { KpiCards } from '@/components/dashboard/kpi-cards'
 import { ClientHealthChart } from '@/components/dashboard/client-health-chart'
 import { PhaseDistribution } from '@/components/dashboard/phase-distribution'
-import { AlertsSummary } from '@/components/dashboard/alerts-summary'
 import { calculateHealthScore } from '@/lib/health-score'
 import { startOfWeek, endOfWeek, startOfMonth } from 'date-fns'
-import type { NutritionPhase, Alert } from '@/lib/types'
+import type { NutritionPhase } from '@/lib/types'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -15,13 +14,11 @@ export default async function DashboardPage() {
   const weekEnd = endOfWeek(now, { weekStartsOn: 1 }).toISOString()
   const monthStart = startOfMonth(now).toISOString()
 
-  // Fetch all data in parallel
   const [
     { data: clients },
     { data: checkinsThisWeek },
     { data: callsThisMonth },
     { data: pendingAlerts },
-    { data: recentAlerts },
     { data: allClients },
   ] = await Promise.all([
     supabase.from('clients').select('*').eq('status', 'active'),
@@ -38,13 +35,6 @@ export default async function DashboardPage() {
       .from('alerts')
       .select('id')
       .eq('is_resolved', false),
-    supabase
-      .from('alerts')
-      .select('*, client:clients(first_name, last_name)')
-      .eq('is_resolved', false)
-      .order('severity', { ascending: false })
-      .order('created_at', { ascending: false })
-      .limit(5),
     supabase
       .from('clients')
       .select('status')
@@ -80,15 +70,12 @@ export default async function DashboardPage() {
 
   // Retention rate
   const total = allClients?.length || 0
-  const completed = allClients?.filter(
-    (c) => c.status === 'completed' || c.status === 'success_case'
-  ).length || 0
   const cancelled = allClients?.filter((c) => c.status === 'cancelled').length || 0
   const retentionRate = total > 0 ? Math.round(((total - cancelled) / total) * 100) : 100
 
   return (
     <div>
-      <Header title="Dashboard" alertCount={pendingAlerts?.length || 0} />
+      <Header title="Dashboard" />
       <div className="space-y-6 p-6">
         <KpiCards
           activeClients={activeClients.length}
@@ -102,8 +89,6 @@ export default async function DashboardPage() {
           <ClientHealthChart green={green} yellow={yellow} red={red} />
           <PhaseDistribution distribution={phaseDistribution} />
         </div>
-
-        <AlertsSummary alerts={(recentAlerts as (Alert & { client: { first_name: string; last_name: string } })[]) || []} />
       </div>
     </div>
   )
