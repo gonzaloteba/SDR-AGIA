@@ -28,6 +28,15 @@ export interface Client {
   phase_change_date: string | null
   closer: string | null
   drive_folder_url: string | null
+  birth_date: string | null
+  height_cm: number | null
+  initial_weight_kg: number | null
+  initial_body_fat_pct: number | null
+  location: string | null
+  training_level: string | null
+  motivation: string | null
+  medical_notes: string | null
+  goals: string | null
   onboarding_trainingpeaks: boolean
   onboarding_whatsapp_group: boolean
   onboarding_community_group: boolean

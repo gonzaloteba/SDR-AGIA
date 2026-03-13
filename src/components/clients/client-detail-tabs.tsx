@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
+import { ClientProfileSummary } from './client-profile-summary'
 import { ProgressCharts } from './progress-charts'
 import { CheckinHistory } from './checkin-history'
 import { CallsLog } from './calls-log'
@@ -55,18 +56,22 @@ export function ClientDetailTabs({
 
       {/* Tab content */}
       {activeTab === 'overview' && (
-        <div className="grid gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            <ProgressCharts checkIns={checkIns} />
-          </div>
-          <div className="space-y-6">
-            <OnboardingChecklist
-              clientId={clientId}
-              trainingpeaks={client.onboarding_trainingpeaks}
-              whatsappGroup={client.onboarding_whatsapp_group}
-              communityGroup={client.onboarding_community_group}
-            />
-            <TrainingPlanCard plans={trainingPlans} clientId={clientId} />
+        <div className="space-y-6">
+          <ClientProfileSummary client={client} />
+
+          <div className="grid gap-6 lg:grid-cols-3">
+            <div className="lg:col-span-2">
+              <ProgressCharts checkIns={checkIns} />
+            </div>
+            <div className="space-y-6">
+              <OnboardingChecklist
+                clientId={clientId}
+                trainingpeaks={client.onboarding_trainingpeaks}
+                whatsappGroup={client.onboarding_whatsapp_group}
+                communityGroup={client.onboarding_community_group}
+              />
+              <TrainingPlanCard plans={trainingPlans} clientId={clientId} />
+            </div>
           </div>
         </div>
       )}

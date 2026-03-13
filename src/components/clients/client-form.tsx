@@ -46,6 +46,15 @@ export function ClientForm({ client }: ClientFormProps) {
       drive_folder_url: (formData.get('drive_folder_url') as string) || null,
       status: (formData.get('status') as string) || 'active',
       current_phase: parseInt(formData.get('current_phase') as string) || 1,
+      birth_date: (formData.get('birth_date') as string) || null,
+      height_cm: parseInt(formData.get('height_cm') as string) || null,
+      initial_weight_kg: parseFloat(formData.get('initial_weight_kg') as string) || null,
+      initial_body_fat_pct: parseFloat(formData.get('initial_body_fat_pct') as string) || null,
+      location: (formData.get('location') as string) || null,
+      training_level: (formData.get('training_level') as string) || null,
+      motivation: (formData.get('motivation') as string) || null,
+      medical_notes: (formData.get('medical_notes') as string) || null,
+      goals: (formData.get('goals') as string) || null,
     }
 
     const supabase = createClient()
@@ -190,6 +199,110 @@ export function ClientForm({ client }: ClientFormProps) {
           defaultValue={client?.drive_folder_url || ''}
           className={inputClass}
           placeholder="https://drive.google.com/..."
+        />
+      </div>
+
+      {/* Profile fields */}
+      <p className="text-sm font-medium text-muted-foreground border-b pb-2 mt-2">Perfil del cliente</p>
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Fecha de nacimiento</label>
+          <input
+            name="birth_date"
+            type="date"
+            defaultValue={client?.birth_date || ''}
+            className={inputClass}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Altura (cm)</label>
+          <input
+            name="height_cm"
+            type="number"
+            defaultValue={client?.height_cm || ''}
+            className={inputClass}
+            placeholder="180"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Ubicación</label>
+          <input
+            name="location"
+            defaultValue={client?.location || ''}
+            className={inputClass}
+            placeholder="Ciudad de México, México"
+          />
+        </div>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Peso inicial (kg)</label>
+          <input
+            name="initial_weight_kg"
+            type="number"
+            step="0.1"
+            defaultValue={client?.initial_weight_kg || ''}
+            className={inputClass}
+            placeholder="80"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">% Grasa inicial</label>
+          <input
+            name="initial_body_fat_pct"
+            type="number"
+            step="0.1"
+            defaultValue={client?.initial_body_fat_pct || ''}
+            className={inputClass}
+            placeholder="20"
+          />
+        </div>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Nivel de entrenamiento</label>
+          <select
+            name="training_level"
+            defaultValue={client?.training_level || ''}
+            className={inputClass}
+          >
+            <option value="">Sin especificar</option>
+            <option value="Inicio">Inicio</option>
+            <option value="Avanzado">Avanzado</option>
+            <option value="Atleta">Atleta</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Motivación</label>
+          <input
+            name="motivation"
+            defaultValue={client?.motivation || ''}
+            className={inputClass}
+            placeholder="Estética, Rendimiento, Salud..."
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium mb-1.5">Objetivos</label>
+        <input
+          name="goals"
+          defaultValue={client?.goals || ''}
+          className={inputClass}
+          placeholder="Objetivos del cliente..."
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium mb-1.5">Notas médicas</label>
+        <input
+          name="medical_notes"
+          defaultValue={client?.medical_notes || ''}
+          className={inputClass}
+          placeholder="Diagnósticos, lesiones, condiciones..."
         />
       </div>
 
