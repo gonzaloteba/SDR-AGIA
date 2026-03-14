@@ -101,12 +101,13 @@ export async function POST(request: NextRequest) {
 
     console.log(`[webhook] Received form_id=${formId}, responseId=${responseId}`)
 
-    // Build answer map by field ref
+    // Build answer map by field id (Typeform sends both id and ref;
+    // our mappings use the stable field id, not the UUID ref)
     const answerMap = new Map<string, unknown>()
     for (const answer of answers) {
-      const ref = answer.field?.ref
-      if (ref) {
-        answerMap.set(ref, extractValue(answer))
+      const id = answer.field?.id
+      if (id) {
+        answerMap.set(id, extractValue(answer))
       }
     }
 
