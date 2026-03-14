@@ -1,4 +1,4 @@
-import { User, MapPin, Phone, Mail, Ruler, Weight, Activity, Target, AlertCircle, Calendar, Trophy, Dumbbell, Moon, Zap, Brain, FileText, Image } from 'lucide-react'
+import { User, MapPin, Phone, Mail, Ruler, Weight, Activity, Target, AlertCircle, Calendar, Trophy, Dumbbell, Moon, Zap, Brain, FileText, Image, Clock, Briefcase, Utensils, Coffee, BedDouble, Sun } from 'lucide-react'
 import { PHASE_LABELS } from '@/lib/constants'
 import type { Client, NutritionPhase } from '@/lib/types'
 
@@ -207,6 +207,87 @@ export function ClientProfileSummary({ client }: ClientProfileSummaryProps) {
                 <p className="text-sm">{client.onboarding_notes}</p>
               </div>
             </div>
+          )}
+
+          {/* Sueño */}
+          {(client.wake_time || client.bed_time || client.sleep_quality_initial || client.wakes_at_night !== null || client.feels_rested !== null) && (
+            <>
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2 mt-4">Sueño</p>
+              <div className="grid gap-1">
+                <InfoRow icon={Sun} label="Hora de despertar" value={client.wake_time} />
+                <InfoRow icon={BedDouble} label="Hora de acostarse" value={client.bed_time} />
+                {client.sleep_quality_initial && (
+                  <InfoRow icon={Moon} label="Calidad de sueño inicial" value={`${client.sleep_quality_initial}/10`} />
+                )}
+                {client.wakes_at_night !== null && client.wakes_at_night !== undefined && (
+                  <InfoRow icon={Moon} label="Se despierta por la noche" value={client.wakes_at_night ? 'Sí' : 'No'} />
+                )}
+                {client.feels_rested !== null && client.feels_rested !== undefined && (
+                  <InfoRow icon={Moon} label="Se siente descansado" value={client.feels_rested ? 'Sí' : 'No'} />
+                )}
+              </div>
+            </>
+          )}
+
+          {/* Trabajo */}
+          {(client.work_schedule || client.work_modality || client.work_activity_level) && (
+            <>
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2 mt-4">Trabajo</p>
+              <div className="grid gap-1">
+                <InfoRow icon={Briefcase} label="Horarios" value={client.work_schedule} />
+                <InfoRow icon={Briefcase} label="Modalidad" value={client.work_modality} />
+                <InfoRow icon={Briefcase} label="Nivel de actividad" value={client.work_activity_level} />
+              </div>
+            </>
+          )}
+
+          {/* Entrenamiento extendido */}
+          {(client.training_time || client.training_location || client.training_cardio || client.trains_fasted !== null || client.training_notes) && (
+            <>
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2 mt-4">Entrenamiento (detalle)</p>
+              <div className="grid gap-1">
+                <InfoRow icon={Clock} label="Momento del día" value={client.training_time} />
+                <InfoRow icon={MapPin} label="Lugar" value={client.training_location} />
+                <InfoRow icon={Activity} label="Cardio" value={client.training_cardio} />
+                {client.trains_fasted !== null && client.trains_fasted !== undefined && (
+                  <InfoRow icon={Dumbbell} label="Entrena en ayunas" value={client.trains_fasted ? 'Sí' : 'No'} />
+                )}
+                <InfoRow icon={FileText} label="Notas entrenamiento" value={client.training_notes} />
+              </div>
+            </>
+          )}
+
+          {/* Alimentación */}
+          {(client.meals_per_day || client.first_meal_time || client.dinner_time || client.night_hunger !== null || client.coffee_intake || client.food_intolerances) && (
+            <>
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2 mt-4">Alimentación</p>
+              <div className="grid gap-1">
+                <InfoRow icon={Utensils} label="Comidas al día" value={client.meals_per_day} />
+                <InfoRow icon={Clock} label="Primera comida" value={client.first_meal_time} />
+                <InfoRow icon={Clock} label="Última comida / cena" value={client.dinner_time} />
+                {client.night_hunger !== null && client.night_hunger !== undefined && (
+                  <InfoRow icon={Utensils} label="Hambre/ansiedad nocturna" value={client.night_hunger ? 'Sí' : 'No'} />
+                )}
+                <InfoRow icon={Coffee} label="Café" value={client.coffee_intake} />
+                {client.food_intolerances && (
+                  <div className="flex items-start gap-3 py-2">
+                    <AlertCircle className="h-4 w-4 mt-0.5 shrink-0 text-amber-500" />
+                    <div className="min-w-0">
+                      <p className="text-xs text-muted-foreground">Intolerancias / alergias</p>
+                      <p className="text-sm text-amber-700">{client.food_intolerances}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* Energía extendida */}
+          {client.energy_dips && (
+            <>
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2 mt-4">Energía (detalle)</p>
+              <InfoRow icon={Zap} label="Bajones de energía" value={client.energy_dips} />
+            </>
           )}
 
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2 mt-4">Detalles del Plan</p>

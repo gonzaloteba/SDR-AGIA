@@ -47,6 +47,26 @@ export interface Client {
   energy_level_initial: number | null
   stress_level_initial: number | null
   initial_photo_url: string | null
+  wake_time: string | null
+  bed_time: string | null
+  sleep_quality_initial: number | null
+  wakes_at_night: boolean | null
+  feels_rested: boolean | null
+  work_schedule: string | null
+  work_modality: string | null
+  work_activity_level: string | null
+  training_time: string | null
+  training_location: string | null
+  training_cardio: string | null
+  trains_fasted: boolean | null
+  training_notes: string | null
+  meals_per_day: string | null
+  first_meal_time: string | null
+  dinner_time: string | null
+  night_hunger: boolean | null
+  coffee_intake: string | null
+  food_intolerances: string | null
+  energy_dips: string | null
   onboarding_notes: string | null
   onboarding_submitted_at: string | null
   onboarding_trainingpeaks: boolean
@@ -79,6 +99,17 @@ export interface CheckIn {
   difficulties: string | null
   stress_level: number | null
   sleep_hours: number | null
+  carb_performance: string | null
+  carb_sensation: string | null
+  post_carb_symptoms: string | null
+  carb_strategy: string | null
+  loss_of_control: boolean | null
+  loss_of_control_detail: string | null
+  craving_details: string | null
+  unused_optimizers: string | null
+  unused_supplements: string | null
+  main_limiter: string | null
+  priority_objective: string | null
   created_at: string
 }
 

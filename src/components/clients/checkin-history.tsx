@@ -235,7 +235,13 @@ function CheckinCard({ checkIn, previousCheckIn }: { checkIn: CheckIn; previousC
           {checkIn.cravings && (
             <div className="rounded-lg bg-muted/30 px-3 py-2">
               <p className="text-xs text-muted-foreground">Antojos</p>
-              <p className="font-medium">{checkIn.cravings === 'TRUE' ? 'Sí' : checkIn.cravings === 'FALSE' ? 'No' : checkIn.cravings}</p>
+              <p className="font-medium">{checkIn.cravings === 'TRUE' || checkIn.cravings === 'true' ? 'Sí' : checkIn.cravings === 'FALSE' || checkIn.cravings === 'false' ? 'No' : checkIn.cravings}</p>
+            </div>
+          )}
+          {checkIn.craving_details && (
+            <div className="rounded-lg bg-muted/30 px-3 py-2">
+              <p className="text-xs text-muted-foreground">Detalle antojos</p>
+              <p className="font-medium">{checkIn.craving_details}</p>
             </div>
           )}
           {checkIn.digestion && (
@@ -248,6 +254,85 @@ function CheckinCard({ checkIn, previousCheckIn }: { checkIn: CheckIn; previousC
             <div className="rounded-lg bg-muted/30 px-3 py-2 sm:col-span-2">
               <p className="text-xs text-muted-foreground">Dificultades</p>
               <p className="font-medium">{checkIn.difficulties}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Carbohidratos */}
+      {(checkIn.carb_performance || checkIn.carb_sensation || checkIn.post_carb_symptoms || checkIn.carb_strategy) && (
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 text-sm">
+          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground sm:col-span-2 lg:col-span-3">Carbohidratos</p>
+          {checkIn.carb_performance && (
+            <div className="rounded-lg bg-muted/30 px-3 py-2">
+              <p className="text-xs text-muted-foreground">Rendimiento en entrenos</p>
+              <p className="font-medium">{checkIn.carb_performance}</p>
+            </div>
+          )}
+          {checkIn.carb_sensation && (
+            <div className="rounded-lg bg-muted/30 px-3 py-2">
+              <p className="text-xs text-muted-foreground">Sensación con carbos</p>
+              <p className="font-medium">{checkIn.carb_sensation}</p>
+            </div>
+          )}
+          {checkIn.post_carb_symptoms && (
+            <div className="rounded-lg bg-muted/30 px-3 py-2">
+              <p className="text-xs text-muted-foreground">Síntomas post-carbos</p>
+              <p className="font-medium">{checkIn.post_carb_symptoms}</p>
+            </div>
+          )}
+          {checkIn.carb_strategy && (
+            <div className="rounded-lg bg-muted/30 px-3 py-2 sm:col-span-2">
+              <p className="text-xs text-muted-foreground">Uso estratégico</p>
+              <p className="font-medium">{checkIn.carb_strategy}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Control y adherencia */}
+      {(checkIn.loss_of_control || checkIn.loss_of_control_detail || checkIn.main_limiter || checkIn.priority_objective) && (
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 text-sm">
+          {checkIn.loss_of_control !== null && checkIn.loss_of_control !== undefined && (
+            <div className="rounded-lg bg-muted/30 px-3 py-2">
+              <p className="text-xs text-muted-foreground">Pérdida de control</p>
+              <p className="font-medium">{checkIn.loss_of_control ? 'Sí' : 'No'}</p>
+            </div>
+          )}
+          {checkIn.loss_of_control_detail && (
+            <div className="rounded-lg bg-muted/30 px-3 py-2 sm:col-span-2">
+              <p className="text-xs text-muted-foreground">Detalle pérdida de control</p>
+              <p className="font-medium">{checkIn.loss_of_control_detail}</p>
+            </div>
+          )}
+          {checkIn.main_limiter && (
+            <div className="rounded-lg bg-muted/30 px-3 py-2">
+              <p className="text-xs text-muted-foreground">Principal limitante</p>
+              <p className="font-medium">{checkIn.main_limiter}</p>
+            </div>
+          )}
+          {checkIn.priority_objective && (
+            <div className="rounded-lg bg-muted/30 px-3 py-2">
+              <p className="text-xs text-muted-foreground">Objetivo prioritario</p>
+              <p className="font-medium">{checkIn.priority_objective}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Suplementos */}
+      {(checkIn.unused_optimizers || checkIn.unused_supplements) && (
+        <div className="grid gap-2 sm:grid-cols-2 text-sm">
+          {checkIn.unused_optimizers && (
+            <div className="rounded-lg bg-muted/30 px-3 py-2">
+              <p className="text-xs text-muted-foreground">Optimizadores no usados</p>
+              <p className="font-medium">{checkIn.unused_optimizers}</p>
+            </div>
+          )}
+          {checkIn.unused_supplements && (
+            <div className="rounded-lg bg-muted/30 px-3 py-2">
+              <p className="text-xs text-muted-foreground">Suplementos sin motivo claro</p>
+              <p className="font-medium">{checkIn.unused_supplements}</p>
             </div>
           )}
         </div>
