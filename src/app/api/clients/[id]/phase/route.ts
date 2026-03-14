@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { getAdminClient } from '@/lib/supabase/admin'
 import { PHASE_DURATIONS_DAYS } from '@/lib/constants'
 import type { NutritionPhase } from '@/lib/types'
 
@@ -21,7 +21,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     custom_phase_duration_days?: number | null
   }
 
-  const supabase = await createClient()
+  const supabase = getAdminClient()
 
   // If changing phase
   if (phase !== undefined) {
