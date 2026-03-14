@@ -99,6 +99,8 @@ export async function POST(request: NextRequest) {
     const responseId = formResponse.token
     const submittedAt = formResponse.submitted_at
 
+    console.log(`[webhook] Received form_id=${formId}, responseId=${responseId}`)
+
     // Build answer map by field ref
     const answerMap = new Map<string, unknown>()
     for (const answer of answers) {
@@ -111,13 +113,16 @@ export async function POST(request: NextRequest) {
     // Determine which form and extract identification refs
     let firstNameRef: string
     let lastNameRef: string
+    let formType: string
 
     if (formId === CHECKIN_FORM_ID) {
       firstNameRef = CHECKIN_FIRST_NAME_REF
       lastNameRef = CHECKIN_LAST_NAME_REF
+      formType = 'check-in'
     } else if (formId === AUDIT_FORM_ID) {
       firstNameRef = AUDIT_FIRST_NAME_REF
       lastNameRef = AUDIT_LAST_NAME_REF
+      formType = 'audit'
     } else {
       // Also try hidden fields as fallback for unknown forms
       const hiddenFields = formResponse.hidden || {}
@@ -126,10 +131,16 @@ export async function POST(request: NextRequest) {
         const supabase = getAdminClient()
         const checkInData = buildLegacyCheckIn(answerMap, hiddenFields.client_id, submittedAt, responseId)
         await supabase.from('check_ins').insert(checkInData)
-        return NextResponse.json({ success: true })
+        return NextResponse.json({ success: true, action: 'legacy_checkin' })
       }
       console.warn(`Unknown form_id: ${formId}`)
-      return NextResponse.json({ success: true, warning: 'Unknown form' })
+      return NextResponse.json({
+        success: false,
+        warning: 'Unknown form',
+        received_form_id: formId,
+        expected_checkin: CHECKIN_FORM_ID,
+        expected_audit: AUDIT_FORM_ID,
+      })
     }
 
     // Extract client name from answers
@@ -142,11 +153,22 @@ export async function POST(request: NextRequest) {
         responseId,
         firstName,
         lastName,
+        firstNameRef,
+        lastNameRef,
+        availableRefs: Array.from(answerMap.keys()),
       })
       // Return 200 to not lose the webhook - Typeform would retry on non-2xx
       return NextResponse.json({
         success: false,
         warning: 'Missing client name fields',
+        debug: {
+          form_type: formType,
+          first_name_ref: firstNameRef,
+          last_name_ref: lastNameRef,
+          first_name_value: firstName || null,
+          last_name_value: lastName || null,
+          available_refs: Array.from(answerMap.keys()),
+        },
       })
     }
 
@@ -154,32 +176,43 @@ export async function POST(request: NextRequest) {
 
     // Find client by name
     let client = await findClientByName(supabase, firstName, lastName)
+    let action: string
 
     // Route to the correct handler
     if (formId === AUDIT_FORM_ID) {
       if (!client) {
         // Auto-create client from Auditoría Inicial data
         client = await createClientFromAudit(supabase, firstName, lastName, answerMap, submittedAt)
-        console.log(`Auto-created client "${firstName} ${lastName}" with id ${client.id}`)
+        action = 'client_created'
+        console.log(`[webhook] Auto-created client "${firstName} ${lastName}" with id ${client.id}`)
       } else {
         // Update existing client with audit data
         await handleAudit(supabase, client.id, answerMap, submittedAt)
+        action = 'client_updated'
+        console.log(`[webhook] Updated audit for "${firstName} ${lastName}" (${client.id})`)
       }
     } else if (formId === CHECKIN_FORM_ID) {
       if (!client) {
-        console.warn(`No client found for check-in: "${firstName} ${lastName}"`, {
-          formId,
-          responseId,
-        })
+        console.warn(`No client found for check-in: "${firstName} ${lastName}"`)
         return NextResponse.json({
           success: false,
           warning: `Client not found: ${firstName} ${lastName}`,
+          debug: { form_type: formType, first_name: firstName, last_name: lastName },
         })
       }
       await handleCheckIn(supabase, client.id, answerMap, submittedAt, responseId)
+      action = 'checkin_inserted'
+      console.log(`[webhook] Check-in inserted for "${firstName} ${lastName}" (${client.id})`)
+    } else {
+      action = 'no_action'
     }
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({
+      success: true,
+      action,
+      client_name: `${firstName} ${lastName}`,
+      client_id: client?.id,
+    })
   } catch (error) {
     console.error('Webhook error:', error)
     return NextResponse.json(
