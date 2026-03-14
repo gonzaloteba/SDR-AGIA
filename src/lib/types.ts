@@ -6,7 +6,6 @@ export type AlertType =
   | 'renewal_approaching'
   | 'training_plan_expiring'
   | 'no_call_logged'
-  | 'onboarding_incomplete'
   | 'program_ending'
 export type AlertSeverity = 'low' | 'medium' | 'high'
 export type UserRole = 'coach' | 'admin'

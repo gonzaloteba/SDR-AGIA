@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
       if (daysUntilPhaseChange >= 0 && daysUntilPhaseChange <= alertWindow && client.current_phase < 3) {
         const phaseNames: Record<number, string> = {
           2: 'Fase 2 - Reintroducción',
-          3: 'Fase 3 - Low-Carb Flexible',
+          3: 'Fase 3 - Optimización',
         }
         const nextPhase = client.current_phase + 1
         const customNote = client.custom_phase_duration_days ? ' (intervalo personalizado)' : ''
@@ -172,33 +172,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 6. Onboarding incomplete (3+ days after start)
-    if (!alertExists(client.id, 'onboarding_incomplete')) {
-      if (daysSinceStart >= 3) {
-        const incomplete =
-          !client.onboarding_trainingpeaks ||
-          !client.onboarding_whatsapp_group ||
-          !client.onboarding_community_group ||
-          !client.onboarding_initial_audit ||
-          !client.onboarding_meal_plan_sent
-        if (incomplete) {
-          const missing = []
-          if (!client.onboarding_trainingpeaks) missing.push('TrainingPeaks')
-          if (!client.onboarding_whatsapp_group) missing.push('WhatsApp 1:1')
-          if (!client.onboarding_community_group) missing.push('Comunidad')
-          if (!client.onboarding_initial_audit) missing.push('Auditoría inicial')
-          if (!client.onboarding_meal_plan_sent) missing.push('Plan de alimentación')
-          alertsToCreate.push({
-            client_id: client.id,
-            type: 'onboarding_incomplete',
-            severity: 'high',
-            message: `Onboarding incompleto para ${client.first_name} ${client.last_name}: falta ${missing.join(', ')}`,
-          })
-        }
-      }
-    }
-
-    // 7. Program ending (14 days before)
+    // 6. Program ending (14 days before)
     if (!alertExists(client.id, 'program_ending')) {
       if (daysUntilEnd >= 0 && daysUntilEnd <= 14) {
         alertsToCreate.push({

@@ -331,7 +331,7 @@ export function ClientForm({ client }: ClientFormProps) {
             >
               <option value="1">Fase 1 - Detox</option>
               <option value="2">Fase 2 - Reintroducción</option>
-              <option value="3">Fase 3 - Low-Carb Flexible</option>
+              <option value="3">Fase 3 - Optimización</option>
             </select>
           </div>
         </div>

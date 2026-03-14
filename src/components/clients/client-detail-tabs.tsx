@@ -7,7 +7,6 @@ import { ProgressCharts } from './progress-charts'
 import { CheckinHistory } from './checkin-history'
 import { CallsLog } from './calls-log'
 import { TrainingPlanCard } from './training-plan-card'
-import { OnboardingChecklist } from './onboarding-checklist'
 import type { CheckIn, Call, TrainingPlan, Client } from '@/lib/types'
 
 interface ClientDetailTabsProps {
@@ -64,14 +63,6 @@ export function ClientDetailTabs({
               <ProgressCharts checkIns={checkIns} />
             </div>
             <div className="space-y-6">
-              <OnboardingChecklist
-                clientId={clientId}
-                trainingpeaks={client.onboarding_trainingpeaks}
-                whatsappGroup={client.onboarding_whatsapp_group}
-                communityGroup={client.onboarding_community_group}
-                initialAudit={client.onboarding_initial_audit}
-                mealPlanSent={client.onboarding_meal_plan_sent}
-              />
               <TrainingPlanCard plans={trainingPlans} clientId={clientId} />
             </div>
           </div>

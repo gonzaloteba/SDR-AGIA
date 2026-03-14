@@ -3,7 +3,7 @@ import type { AlertSeverity, AlertType, ClientStatus, NutritionPhase } from './t
 export const PHASE_LABELS: Record<NutritionPhase, string> = {
   1: 'Fase 1 - Detox',
   2: 'Fase 2 - Reintroducción',
-  3: 'Fase 3 - Low-Carb Flexible',
+  3: 'Fase 3 - Optimización',
 }
 
 export const PHASE_DURATIONS_DAYS: Record<NutritionPhase, number> = {
@@ -36,7 +36,6 @@ export const ALERT_TYPE_LABELS: Record<AlertType, string> = {
   renewal_approaching: 'Renovación próxima',
   training_plan_expiring: 'Plan de entrenamiento por vencer',
   no_call_logged: 'Llamada no registrada',
-  onboarding_incomplete: 'Onboarding incompleto',
   program_ending: 'Programa por terminar',
 }
 
