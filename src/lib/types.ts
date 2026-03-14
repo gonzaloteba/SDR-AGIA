@@ -121,6 +121,9 @@ export interface Call {
   call_date: string
   duration_minutes: number
   notes: string | null
+  transcript: string | null
+  google_event_id: string | null
+  meet_link: string | null
   created_at: string
 }
 

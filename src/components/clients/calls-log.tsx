@@ -1,9 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { Phone, Plus } from 'lucide-react'
+import { Phone, Plus, ChevronDown, ChevronUp, FileText, Video, ExternalLink } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { cn } from '@/lib/utils'
 import type { Call } from '@/lib/types'
 
 interface CallsLogProps {
@@ -14,6 +15,7 @@ interface CallsLogProps {
 export function CallsLog({ calls, clientId }: CallsLogProps) {
   const [showForm, setShowForm] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [expandedCall, setExpandedCall] = useState<string | null>(null)
   const router = useRouter()
 
   async function handleAddCall(e: React.FormEvent<HTMLFormElement>) {
@@ -27,6 +29,8 @@ export function CallsLog({ calls, clientId }: CallsLogProps) {
       call_date: formData.get('call_date') as string,
       duration_minutes: parseInt(formData.get('duration') as string) || 15,
       notes: (formData.get('notes') as string) || null,
+      transcript: (formData.get('transcript') as string) || null,
+      meet_link: (formData.get('meet_link') as string) || null,
     })
 
     setShowForm(false)
@@ -77,12 +81,32 @@ export function CallsLog({ calls, clientId }: CallsLogProps) {
             </div>
           </div>
           <div>
+            <label className="block text-xs font-medium mb-1">Link de Meet</label>
+            <input
+              name="meet_link"
+              type="url"
+              className={inputClass}
+              placeholder="https://meet.google.com/..."
+            />
+          </div>
+          <div>
             <label className="block text-xs font-medium mb-1">Notas</label>
             <textarea
               name="notes"
               rows={2}
               className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               placeholder="Resumen de la llamada..."
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium mb-1">
+              Transcript (Gemini)
+            </label>
+            <textarea
+              name="transcript"
+              rows={4}
+              className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring font-mono text-xs"
+              placeholder="Pega aquí el transcript de Gemini..."
             />
           </div>
           <div className="flex gap-2">
@@ -110,28 +134,92 @@ export function CallsLog({ calls, clientId }: CallsLogProps) {
             No hay llamadas registradas
           </p>
         ) : (
-          calls.map((call) => (
-            <div key={call.id} className="flex items-start gap-3 rounded-lg p-3 hover:bg-muted/50">
-              <Phone className="mt-0.5 h-4 w-4 text-muted-foreground" />
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium">
-                    {new Date(call.call_date).toLocaleDateString('es-ES', {
-                      weekday: 'short',
-                      day: 'numeric',
-                      month: 'short',
-                    })}
-                  </p>
-                  <span className="text-xs text-muted-foreground">
-                    {call.duration_minutes} min
-                  </span>
-                </div>
-                {call.notes && (
-                  <p className="mt-1 text-xs text-muted-foreground">{call.notes}</p>
+          calls.map((call) => {
+            const isExpanded = expandedCall === call.id
+            const hasTranscript = !!call.transcript
+
+            return (
+              <div key={call.id} className="rounded-lg border hover:border-primary/20 transition-colors">
+                <button
+                  type="button"
+                  onClick={() => setExpandedCall(isExpanded ? null : call.id)}
+                  className="flex w-full items-start gap-3 p-3 text-left"
+                >
+                  <Phone className="mt-0.5 h-4 w-4 text-muted-foreground shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium">
+                        {new Date(call.call_date).toLocaleDateString('es-ES', {
+                          weekday: 'short',
+                          day: 'numeric',
+                          month: 'short',
+                        })}
+                      </p>
+                      <span className="text-xs text-muted-foreground">
+                        {call.duration_minutes} min
+                      </span>
+                      {hasTranscript && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-700">
+                          <FileText className="h-3 w-3" />
+                          Transcript
+                        </span>
+                      )}
+                      {call.meet_link && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700">
+                          <Video className="h-3 w-3" />
+                          Meet
+                        </span>
+                      )}
+                    </div>
+                    {call.notes && (
+                      <p className="mt-1 text-xs text-muted-foreground line-clamp-1">{call.notes}</p>
+                    )}
+                  </div>
+                  {(hasTranscript || call.notes) && (
+                    isExpanded
+                      ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                      : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                  )}
+                </button>
+
+                {isExpanded && (
+                  <div className="border-t px-3 pb-3 space-y-3">
+                    {call.meet_link && (
+                      <div className="pt-3">
+                        <a
+                          href={call.meet_link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          Abrir en Google Meet
+                        </a>
+                      </div>
+                    )}
+                    {call.notes && (
+                      <div className={cn(!call.meet_link && 'pt-3')}>
+                        <p className="text-xs font-medium text-muted-foreground mb-1">Notas</p>
+                        <p className="text-sm whitespace-pre-wrap">{call.notes}</p>
+                      </div>
+                    )}
+                    {hasTranscript && (
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground mb-1">
+                          Transcript de Gemini
+                        </p>
+                        <div className="max-h-80 overflow-y-auto rounded-lg bg-muted/50 p-3">
+                          <p className="text-xs whitespace-pre-wrap font-mono leading-relaxed">
+                            {call.transcript}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
-            </div>
-          ))
+            )
+          })
         )}
       </div>
     </div>
