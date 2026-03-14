@@ -4,6 +4,7 @@ import { PhaseTracker } from '@/components/clients/phase-tracker'
 import { ClientDetailHeader } from '@/components/clients/client-detail-header'
 import { ClientDetailTabs } from '@/components/clients/client-detail-tabs'
 import { PendingAlerts } from '@/components/clients/pending-alerts'
+import { PendingCoachActions } from '@/components/clients/pending-coach-actions'
 import { notFound } from 'next/navigation'
 import type { NutritionPhase } from '@/lib/types'
 
@@ -55,6 +56,8 @@ export default async function ClientDetailPage({ params }: Props) {
         <ClientDetailHeader client={client} alertCount={alerts?.length || 0} />
 
         <PendingAlerts alerts={alerts || []} />
+
+        <PendingCoachActions calls={calls || []} />
 
         <PhaseTracker
           clientId={client.id}

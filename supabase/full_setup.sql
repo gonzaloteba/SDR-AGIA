@@ -135,6 +135,11 @@ CREATE TABLE IF NOT EXISTS calls (
   call_date DATE NOT NULL,
   duration_minutes INTEGER DEFAULT 15,
   notes TEXT,
+  transcript TEXT,
+  google_event_id TEXT,
+  meet_link TEXT,
+  coach_actions TEXT,
+  coach_actions_completed BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

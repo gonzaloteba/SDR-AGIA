@@ -124,6 +124,8 @@ export interface Call {
   transcript: string | null
   google_event_id: string | null
   meet_link: string | null
+  coach_actions: string | null
+  coach_actions_completed: boolean
   created_at: string
 }
 
@@ -162,4 +164,5 @@ export interface ClientWithHealth extends Client {
   last_checkin_date: string | null
   calls_this_month: number
   days_remaining: number
+  pending_coach_actions: number
 }

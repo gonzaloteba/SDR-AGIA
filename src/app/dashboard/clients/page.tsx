@@ -14,6 +14,7 @@ export default async function ClientsPage() {
     { data: latestCheckins },
     { data: callsThisMonth },
     { data: unresolvedAlerts },
+    { data: pendingCoachActions },
   ] = await Promise.all([
     supabase.from('clients').select('*').order('first_name'),
     supabase
@@ -28,6 +29,11 @@ export default async function ClientsPage() {
       .from('alerts')
       .select('client_id')
       .eq('is_resolved', false),
+    supabase
+      .from('calls')
+      .select('client_id')
+      .not('coach_actions', 'is', null)
+      .eq('coach_actions_completed', false),
   ])
 
   // Build lookup maps
@@ -49,6 +55,12 @@ export default async function ClientsPage() {
     alertCountByClient.set(alert.client_id, (alertCountByClient.get(alert.client_id) || 0) + 1)
   }
 
+  // Count pending coach actions per client
+  const coachActionsCountByClient = new Map<string, number>()
+  for (const action of pendingCoachActions || []) {
+    coachActionsCountByClient.set(action.client_id, (coachActionsCountByClient.get(action.client_id) || 0) + 1)
+  }
+
   // Enrich clients with health score
   const enrichedClients: ClientWithHealth[] = (clients || []).map((client) => {
     const lastCheckinDate = lastCheckinByClient.get(client.id) || null
@@ -61,6 +73,7 @@ export default async function ClientsPage() {
       last_checkin_date: lastCheckinDate,
       calls_this_month: callsCount,
       days_remaining: getDaysRemaining(client.end_date),
+      pending_coach_actions: coachActionsCountByClient.get(client.id) || 0,
     }
   })
 

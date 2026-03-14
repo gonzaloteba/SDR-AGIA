@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Search, Plus } from 'lucide-react'
+import { Search, Plus, ClipboardList } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PHASE_LABELS, HEALTH_COLORS } from '@/lib/constants'
 import { StatusDropdown } from '@/components/clients/status-dropdown'
@@ -112,12 +112,23 @@ export function ClientTable({ clients }: ClientTableProps) {
                     />
                   </td>
                   <td className="px-4 py-3">
-                    <Link
-                      href={`/dashboard/clients/${client.id}`}
-                      className="font-medium hover:underline"
-                    >
-                      {client.first_name} {client.last_name}
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={`/dashboard/clients/${client.id}`}
+                        className="font-medium hover:underline"
+                      >
+                        {client.first_name} {client.last_name}
+                      </Link>
+                      {client.pending_coach_actions > 0 && (
+                        <span
+                          className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-medium text-orange-700"
+                          title={`${client.pending_coach_actions} acción(es) del coach pendiente(s)`}
+                        >
+                          <ClipboardList className="h-3 w-3" />
+                          {client.pending_coach_actions}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <StatusDropdown

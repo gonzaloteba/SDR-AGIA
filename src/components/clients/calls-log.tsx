@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Phone, Plus, ChevronDown, ChevronUp, FileText, Video, ExternalLink } from 'lucide-react'
+import { Phone, Plus, ChevronDown, ChevronUp, FileText, Video, ExternalLink, ClipboardList, CheckCircle2, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -16,6 +16,7 @@ export function CallsLog({ calls, clientId }: CallsLogProps) {
   const [showForm, setShowForm] = useState(false)
   const [loading, setLoading] = useState(false)
   const [expandedCall, setExpandedCall] = useState<string | null>(null)
+  const [completingAction, setCompletingAction] = useState<string | null>(null)
   const router = useRouter()
 
   async function handleAddCall(e: React.FormEvent<HTMLFormElement>) {
@@ -31,10 +32,22 @@ export function CallsLog({ calls, clientId }: CallsLogProps) {
       notes: (formData.get('notes') as string) || null,
       transcript: (formData.get('transcript') as string) || null,
       meet_link: (formData.get('meet_link') as string) || null,
+      coach_actions: (formData.get('coach_actions') as string) || null,
     })
 
     setShowForm(false)
     setLoading(false)
+    router.refresh()
+  }
+
+  async function completeCoachActions(callId: string) {
+    setCompletingAction(callId)
+    const supabase = createClient()
+    await supabase
+      .from('calls')
+      .update({ coach_actions_completed: true })
+      .eq('id', callId)
+    setCompletingAction(null)
     router.refresh()
   }
 
@@ -109,6 +122,17 @@ export function CallsLog({ calls, clientId }: CallsLogProps) {
               placeholder="Pega aquí el transcript de Gemini..."
             />
           </div>
+          <div>
+            <label className="block text-xs font-medium mb-1">
+              Acciones del coach
+            </label>
+            <textarea
+              name="coach_actions"
+              rows={3}
+              className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              placeholder="Ej: Actualizar plan de alimentación, enviar recetas batch cooking..."
+            />
+          </div>
           <div className="flex gap-2">
             <button
               type="submit"
@@ -137,6 +161,8 @@ export function CallsLog({ calls, clientId }: CallsLogProps) {
           calls.map((call) => {
             const isExpanded = expandedCall === call.id
             const hasTranscript = !!call.transcript
+            const hasCoachActions = !!call.coach_actions
+            const actionsPending = hasCoachActions && !call.coach_actions_completed
 
             return (
               <div key={call.id} className="rounded-lg border hover:border-primary/20 transition-colors">
@@ -170,12 +196,23 @@ export function CallsLog({ calls, clientId }: CallsLogProps) {
                           Meet
                         </span>
                       )}
+                      {hasCoachActions && (
+                        <span className={cn(
+                          'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium',
+                          actionsPending
+                            ? 'bg-orange-100 text-orange-700'
+                            : 'bg-emerald-100 text-emerald-700'
+                        )}>
+                          <ClipboardList className="h-3 w-3" />
+                          {actionsPending ? 'Acciones pendientes' : 'Acciones completadas'}
+                        </span>
+                      )}
                     </div>
                     {call.notes && (
                       <p className="mt-1 text-xs text-muted-foreground line-clamp-1">{call.notes}</p>
                     )}
                   </div>
-                  {(hasTranscript || call.notes) && (
+                  {(hasTranscript || call.notes || hasCoachActions) && (
                     isExpanded
                       ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                       : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
@@ -213,6 +250,45 @@ export function CallsLog({ calls, clientId }: CallsLogProps) {
                             {call.transcript}
                           </p>
                         </div>
+                      </div>
+                    )}
+                    {hasCoachActions && (
+                      <div className={cn(
+                        'rounded-lg border p-3',
+                        actionsPending
+                          ? 'border-orange-200 bg-orange-50/50'
+                          : 'border-emerald-200 bg-emerald-50/50'
+                      )}>
+                        <div className="flex items-center justify-between mb-2">
+                          <p className={cn(
+                            'text-xs font-medium flex items-center gap-1.5',
+                            actionsPending ? 'text-orange-800' : 'text-emerald-800'
+                          )}>
+                            <ClipboardList className="h-3.5 w-3.5" />
+                            Acciones del coach
+                            {!actionsPending && (
+                              <span className="inline-flex items-center gap-1 text-emerald-600">
+                                <CheckCircle2 className="h-3 w-3" />
+                                Completadas
+                              </span>
+                            )}
+                          </p>
+                          {actionsPending && (
+                            <button
+                              onClick={() => completeCoachActions(call.id)}
+                              disabled={completingAction === call.id}
+                              className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 transition-colors disabled:opacity-50"
+                            >
+                              {completingAction === call.id ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <CheckCircle2 className="h-3 w-3" />
+                              )}
+                              Marcar completadas
+                            </button>
+                          )}
+                        </div>
+                        <p className="text-sm whitespace-pre-wrap">{call.coach_actions}</p>
                       </div>
                     )}
                   </div>
