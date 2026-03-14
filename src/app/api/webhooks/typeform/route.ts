@@ -138,25 +138,30 @@ export async function POST(request: NextRequest) {
     const supabase = getAdminClient()
 
     // Find client by name
-    const client = await findClientByName(supabase, firstName, lastName)
-
-    if (!client) {
-      console.warn(`No client found for name: "${firstName} ${lastName}"`, {
-        formId,
-        responseId,
-      })
-      // Return 200 to acknowledge receipt - data is logged for manual review
-      return NextResponse.json({
-        success: false,
-        warning: `Client not found: ${firstName} ${lastName}`,
-      })
-    }
+    let client = await findClientByName(supabase, firstName, lastName)
 
     // Route to the correct handler
-    if (formId === CHECKIN_FORM_ID) {
+    if (formId === AUDIT_FORM_ID) {
+      if (!client) {
+        // Auto-create client from Auditoría Inicial data
+        client = await createClientFromAudit(supabase, firstName, lastName, answerMap, submittedAt)
+        console.log(`Auto-created client "${firstName} ${lastName}" with id ${client.id}`)
+      } else {
+        // Update existing client with audit data
+        await handleAudit(supabase, client.id, answerMap, submittedAt)
+      }
+    } else if (formId === CHECKIN_FORM_ID) {
+      if (!client) {
+        console.warn(`No client found for check-in: "${firstName} ${lastName}"`, {
+          formId,
+          responseId,
+        })
+        return NextResponse.json({
+          success: false,
+          warning: `Client not found: ${firstName} ${lastName}`,
+        })
+      }
       await handleCheckIn(supabase, client.id, answerMap, submittedAt, responseId)
-    } else if (formId === AUDIT_FORM_ID) {
-      await handleAudit(supabase, client.id, answerMap, submittedAt)
     }
 
     return NextResponse.json({ success: true })
@@ -243,6 +248,76 @@ async function handleCheckIn(
     .eq('client_id', clientId)
     .eq('type', 'missed_checkin')
     .eq('is_resolved', false)
+}
+
+// ============================================
+// Auto-create client from Auditoría Inicial
+// ============================================
+async function createClientFromAudit(
+  supabase: ReturnType<typeof getAdminClient>,
+  firstName: string,
+  lastName: string,
+  answerMap: Map<string, unknown>,
+  submittedAt: string
+): Promise<{ id: string }> {
+  // Build client data with required fields
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const clientData: Record<string, any> = {
+    first_name: firstName.trim(),
+    last_name: lastName.trim(),
+    start_date: submittedAt.split('T')[0], // Use submission date as start_date
+    onboarding_submitted_at: submittedAt,
+  }
+
+  // Map audit form fields to client columns
+  for (const [ref, column] of Object.entries(AUDIT_FIELD_MAP)) {
+    const value = answerMap.get(ref)
+    if (value === undefined || value === null) continue
+
+    switch (column) {
+      case 'sleep_hours_avg': {
+        const num = parseFloat(String(value))
+        clientData[column] = isNaN(num) ? null : num
+        break
+      }
+      case 'training_days_per_week': {
+        const num = parseInt(String(value), 10)
+        clientData[column] = isNaN(num) ? null : num
+        break
+      }
+      case 'has_event':
+      case 'wakes_at_night':
+      case 'feels_rested':
+      case 'night_hunger':
+      case 'trains_fasted':
+        clientData[column] = typeof value === 'boolean' ? value : true
+        break
+      case 'sleep_quality_initial':
+      case 'energy_level_initial':
+        clientData[column] = typeof value === 'number' ? value : parseInt(String(value), 10)
+        break
+      case 'initial_photo_url':
+        if (typeof value === 'string' && value) {
+          clientData[column] = value
+        }
+        break
+      default:
+        clientData[column] = value
+    }
+  }
+
+  const { data, error } = await supabase
+    .from('clients')
+    .insert(clientData)
+    .select('id')
+    .single()
+
+  if (error) {
+    console.error('Error creating client from audit:', error)
+    throw error
+  }
+
+  return data
 }
 
 // ============================================
