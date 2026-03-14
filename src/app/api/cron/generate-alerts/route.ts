@@ -100,12 +100,13 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. Phase change approaching (uses custom alert window or default 3 days)
-    if (!alertExists(client.id, 'phase_change') && client.phase_change_date) {
+    // Skip if indefinite (-1) or no phase_change_date
+    if (!alertExists(client.id, 'phase_change') && client.phase_change_date && client.custom_phase_duration_days !== -1) {
       const daysUntilPhaseChange = differenceInDays(
         new Date(client.phase_change_date),
         now
       )
-      const alertWindow = client.custom_phase_duration_days
+      const alertWindow = client.custom_phase_duration_days && client.custom_phase_duration_days > 0
         ? Math.min(3, client.custom_phase_duration_days)
         : 3
       if (daysUntilPhaseChange >= 0 && daysUntilPhaseChange <= alertWindow && client.current_phase < 3) {

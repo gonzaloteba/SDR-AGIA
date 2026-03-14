@@ -1,8 +1,8 @@
 import Link from 'next/link'
 import { ArrowLeft, ExternalLink, Edit } from 'lucide-react'
+import { PHASE_LABELS } from '@/lib/constants'
 import { getDaysRemaining } from '@/lib/health-score'
 import { StatusDropdown } from '@/components/clients/status-dropdown'
-import { PhaseDropdown } from '@/components/clients/phase-dropdown'
 import type { Client, NutritionPhase } from '@/lib/types'
 
 interface ClientDetailHeaderProps {
@@ -40,10 +40,7 @@ export function ClientDetailHeader({ client, alertCount }: ClientDetailHeaderPro
               )}
             </div>
             <div className="mt-1 flex items-center gap-4 text-sm text-muted-foreground">
-              <PhaseDropdown
-                clientId={client.id}
-                currentPhase={client.current_phase as NutritionPhase}
-              />
+              <span>{PHASE_LABELS[client.current_phase as NutritionPhase]}</span>
               <span>{daysRemaining} días restantes</span>
               <span>
                 Inicio: {new Date(client.start_date).toLocaleDateString('es-ES')}
