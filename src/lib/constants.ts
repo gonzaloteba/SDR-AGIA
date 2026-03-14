@@ -59,6 +59,6 @@ export const HEALTH_COLORS = {
 
 export const CALLS_PER_MONTH = 3
 export const PROGRAM_DURATION_DAYS = 90
-export const RENEWAL_ALERT_DAYS = 15
+export const RENEWAL_ALERT_DAYS = 21
 export const TRAINING_PLAN_ALERT_DAYS = 7
 export const CHECKIN_GRACE_DAYS = 8

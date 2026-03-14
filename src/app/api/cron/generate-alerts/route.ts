@@ -120,18 +120,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 3. Renewal approaching (15 days before)
+    // 3. Renewal approaching (21 days before program end)
     if (!alertExists(client.id, 'renewal_approaching')) {
-      const daysUntilRenewal = differenceInDays(
-        new Date(client.renewal_date),
-        now
-      )
-      if (daysUntilRenewal >= 0 && daysUntilRenewal <= 15) {
+      if (daysUntilEnd >= 0 && daysUntilEnd <= 21) {
         alertsToCreate.push({
           client_id: client.id,
           type: 'renewal_approaching',
           severity: 'medium',
-          message: `Contactar a ${client.first_name} ${client.last_name} para renovación (${daysUntilRenewal} días)`,
+          message: `Contactar a ${client.first_name} ${client.last_name} para renovación (programa termina en ${daysUntilEnd} días)`,
         })
       }
     }
