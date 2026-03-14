@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import { PHASE_LABELS, PHASE_DURATIONS_DAYS, PHASE_ALERT_DAYS_BEFORE } from '@/lib/constants'
 import { differenceInDays } from 'date-fns'
 import { AlertTriangle, Clock, Pencil, Check, X } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 import type { NutritionPhase } from '@/lib/types'
 
 interface PhaseTrackerProps {
@@ -15,6 +16,13 @@ interface PhaseTrackerProps {
   endDate: string
   phaseChangeDate: string | null
   customPhaseDurationDays: number | null
+}
+
+// Default durations when switching to a phase
+const PHASE_DEFAULT_DAYS: Record<NutritionPhase, number | null> = {
+  1: 7,
+  2: 30,
+  3: null, // indefinido
 }
 
 export function PhaseTracker({ clientId, currentPhase, startDate, endDate, phaseChangeDate, customPhaseDurationDays }: PhaseTrackerProps) {
@@ -31,7 +39,8 @@ export function PhaseTracker({ clientId, currentPhase, startDate, endDate, phase
   // Calculate days until phase change
   let daysUntilPhaseChange: number | null = null
   let nextPhase: NutritionPhase | null = null
-  if (phaseChangeDate && currentPhase < 3) {
+  const isIndefinite = customPhaseDurationDays === -1
+  if (phaseChangeDate && currentPhase < 3 && !isIndefinite) {
     daysUntilPhaseChange = differenceInDays(new Date(phaseChangeDate), now)
     nextPhase = (currentPhase + 1) as NutritionPhase
   }
@@ -39,12 +48,13 @@ export function PhaseTracker({ clientId, currentPhase, startDate, endDate, phase
   const showAlert = daysUntilPhaseChange !== null && daysUntilPhaseChange >= 0 && daysUntilPhaseChange <= PHASE_ALERT_DAYS_BEFORE
   const isUrgent = daysUntilPhaseChange !== null && daysUntilPhaseChange <= 1
 
-  // Interval state
-  const isIndefinite = currentPhase === 3 && customPhaseDurationDays === null
-  const currentDuration = currentPhase === 3 ? null : (customPhaseDurationDays ?? PHASE_DURATIONS_DAYS[currentPhase])
+  // Interval display
+  const effectiveDuration = isIndefinite ? null : (customPhaseDurationDays ?? (currentPhase === 3 ? null : PHASE_DURATIONS_DAYS[currentPhase]))
+  const displayDuration = effectiveDuration ? `${effectiveDuration} días` : 'Indefinido'
+
   const [editing, setEditing] = useState(false)
-  const [intervalValue, setIntervalValue] = useState(currentDuration ? String(currentDuration) : '')
-  const [isIndefiniteInput, setIsIndefiniteInput] = useState(currentPhase === 3 || customPhaseDurationDays === -1)
+  const [intervalValue, setIntervalValue] = useState(effectiveDuration ? String(effectiveDuration) : '')
+  const [isIndefiniteInput, setIsIndefiniteInput] = useState(!effectiveDuration)
   const [saving, setSaving] = useState(false)
   const [changingPhase, setChangingPhase] = useState(false)
   const router = useRouter()
@@ -53,21 +63,57 @@ export function PhaseTracker({ clientId, currentPhase, startDate, endDate, phase
     if (newPhase === currentPhase || changingPhase) return
 
     setChangingPhase(true)
+    const supabase = createClient()
+
     try {
-      // Phase 3 = indefinido (no interval), Phase 1 = 7 days, Phase 2 = 30 days
-      const body: Record<string, unknown> = { phase: newPhase }
-      if (newPhase === 3) {
-        body.custom_phase_duration_days = -1 // sentinel for indefinite
+      const defaultDays = PHASE_DEFAULT_DAYS[newPhase]
+
+      // Calculate phase_change_date
+      let newPhaseChangeDate: string | null = null
+      if (defaultDays) {
+        const changeDate = new Date()
+        changeDate.setDate(changeDate.getDate() + defaultDays)
+        newPhaseChangeDate = changeDate.toISOString().split('T')[0]
       }
 
-      const res = await fetch(`/api/clients/${clientId}/phase`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-      if (res.ok) {
-        router.refresh()
+      // Update phase + phase_change_date + reset custom duration
+      const updateData: Record<string, unknown> = {
+        current_phase: newPhase,
+        phase_change_date: newPhaseChangeDate,
+        custom_phase_duration_days: defaultDays === null ? -1 : null,
       }
+
+      const { error } = await supabase
+        .from('clients')
+        .update(updateData)
+        .eq('id', clientId)
+
+      if (error) {
+        // If custom_phase_duration_days column doesn't exist, retry without it
+        console.error('Phase update error, retrying without custom field:', error.message)
+        const { error: retryError } = await supabase
+          .from('clients')
+          .update({
+            current_phase: newPhase,
+            phase_change_date: newPhaseChangeDate,
+          })
+          .eq('id', clientId)
+
+        if (retryError) {
+          console.error('Phase update retry failed:', retryError.message)
+          return
+        }
+      }
+
+      // Resolve existing phase_change alerts
+      await supabase
+        .from('alerts')
+        .update({ is_resolved: true, resolved_at: new Date().toISOString() })
+        .eq('client_id', clientId)
+        .eq('type', 'phase_change')
+        .eq('is_resolved', false)
+
+      router.refresh()
     } finally {
       setChangingPhase(false)
     }
@@ -75,29 +121,67 @@ export function PhaseTracker({ clientId, currentPhase, startDate, endDate, phase
 
   async function saveInterval() {
     setSaving(true)
+    const supabase = createClient()
+
     try {
-      const body: Record<string, unknown> = {}
       if (isIndefiniteInput) {
-        body.custom_phase_duration_days = -1
+        // Set indefinite
+        const { error } = await supabase
+          .from('clients')
+          .update({
+            custom_phase_duration_days: -1,
+            phase_change_date: null,
+          })
+          .eq('id', clientId)
+
+        if (error) {
+          // Fallback without custom column
+          await supabase
+            .from('clients')
+            .update({ phase_change_date: null })
+            .eq('id', clientId)
+        }
       } else {
         const days = parseInt(intervalValue, 10)
         if (isNaN(days) || days < 1) {
           setSaving(false)
           return
         }
+
+        const changeDate = new Date()
+        changeDate.setDate(changeDate.getDate() + days)
+        const newPhaseChangeDate = changeDate.toISOString().split('T')[0]
+
         const defaultDuration = PHASE_DURATIONS_DAYS[currentPhase]
-        body.custom_phase_duration_days = days === defaultDuration ? null : days
+        const customValue = days === defaultDuration ? null : days
+
+        const { error } = await supabase
+          .from('clients')
+          .update({
+            custom_phase_duration_days: customValue,
+            phase_change_date: newPhaseChangeDate,
+          })
+          .eq('id', clientId)
+
+        if (error) {
+          // Fallback without custom column
+          await supabase
+            .from('clients')
+            .update({ phase_change_date: newPhaseChangeDate })
+            .eq('id', clientId)
+        }
       }
 
-      const res = await fetch(`/api/clients/${clientId}/phase`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-      if (res.ok) {
-        setEditing(false)
-        router.refresh()
-      }
+      // Resolve existing phase_change alerts
+      await supabase
+        .from('alerts')
+        .update({ is_resolved: true, resolved_at: new Date().toISOString() })
+        .eq('client_id', clientId)
+        .eq('type', 'phase_change')
+        .eq('is_resolved', false)
+
+      setEditing(false)
+      router.refresh()
     } finally {
       setSaving(false)
     }
@@ -106,20 +190,14 @@ export function PhaseTracker({ clientId, currentPhase, startDate, endDate, phase
   // Display duration text for a phase box
   function phaseDurationLabel(phase: NutritionPhase): string {
     if (phase === currentPhase) {
-      if (customPhaseDurationDays === -1) return 'Indefinido'
+      if (isIndefinite) return 'Indefinido'
       if (phase === 3 && customPhaseDurationDays === null) return 'Indefinido'
-      if (customPhaseDurationDays) return `${customPhaseDurationDays} días`
+      if (customPhaseDurationDays && customPhaseDurationDays > 0) return `${customPhaseDurationDays} días`
       return `${PHASE_DURATIONS_DAYS[phase]} días`
     }
     if (phase === 3) return 'Indefinido'
     return `${PHASE_DURATIONS_DAYS[phase]} días`
   }
-
-  const displayDuration = customPhaseDurationDays === -1 || (currentPhase === 3 && customPhaseDurationDays === null)
-    ? 'Indefinido'
-    : currentDuration
-      ? `${currentDuration} días`
-      : 'Indefinido'
 
   return (
     <div className="rounded-xl border bg-card p-6 shadow-sm space-y-4">
@@ -170,7 +248,7 @@ export function PhaseTracker({ clientId, currentPhase, startDate, endDate, phase
       <div className="flex gap-2">
         {phases.map((phase) => {
           const isCurrentPhase = phase === currentPhase
-          const isCustom = isCurrentPhase && customPhaseDurationDays !== null && customPhaseDurationDays !== -1
+          const isCustom = isCurrentPhase && customPhaseDurationDays !== null && customPhaseDurationDays > 0
 
           return (
             <button
@@ -196,7 +274,7 @@ export function PhaseTracker({ clientId, currentPhase, startDate, endDate, phase
                   <span className="ml-1 text-primary">(personalizado)</span>
                 )}
               </p>
-              {isCurrentPhase && phaseChangeDate && currentPhase < 3 && customPhaseDurationDays !== -1 && (
+              {isCurrentPhase && phaseChangeDate && !isIndefinite && currentPhase < 3 && (
                 <p className="mt-1 text-muted-foreground">
                   Cambio: {new Date(phaseChangeDate).toLocaleDateString('es-ES')}
                 </p>
@@ -248,8 +326,8 @@ export function PhaseTracker({ clientId, currentPhase, startDate, endDate, phase
                 type="button"
                 onClick={() => {
                   setEditing(false)
-                  setIntervalValue(currentDuration ? String(currentDuration) : '')
-                  setIsIndefiniteInput(customPhaseDurationDays === -1 || (currentPhase === 3 && customPhaseDurationDays === null))
+                  setIntervalValue(effectiveDuration ? String(effectiveDuration) : '')
+                  setIsIndefiniteInput(!effectiveDuration)
                 }}
                 className="rounded-md p-1 text-red-600 hover:bg-red-50"
               >
@@ -259,15 +337,15 @@ export function PhaseTracker({ clientId, currentPhase, startDate, endDate, phase
           ) : (
             <div className="flex items-center gap-2 mt-1">
               <span className="text-sm font-medium">{displayDuration}</span>
-              {customPhaseDurationDays !== null && customPhaseDurationDays !== -1 && (
+              {customPhaseDurationDays !== null && customPhaseDurationDays > 0 && (
                 <span className="text-[10px] text-primary">(personalizado)</span>
               )}
               <button
                 type="button"
                 onClick={() => {
                   setEditing(true)
-                  setIntervalValue(currentDuration ? String(currentDuration) : '')
-                  setIsIndefiniteInput(displayDuration === 'Indefinido')
+                  setIntervalValue(effectiveDuration ? String(effectiveDuration) : '')
+                  setIsIndefiniteInput(!effectiveDuration)
                 }}
                 className="rounded-md p-1 text-muted-foreground hover:bg-muted"
               >
@@ -276,7 +354,7 @@ export function PhaseTracker({ clientId, currentPhase, startDate, endDate, phase
             </div>
           )}
         </div>
-        {daysUntilPhaseChange !== null && daysUntilPhaseChange >= 0 && customPhaseDurationDays !== -1 && (
+        {daysUntilPhaseChange !== null && daysUntilPhaseChange >= 0 && (
           <div className="text-right">
             <p className="text-xs text-muted-foreground">Faltan</p>
             <p className="text-lg font-bold">{daysUntilPhaseChange}d</p>
