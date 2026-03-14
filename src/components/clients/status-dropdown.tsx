@@ -18,6 +18,7 @@ const ALL_STATUSES: ClientStatus[] = ['active', 'completed', 'renewed', 'cancell
 
 export function StatusDropdown({ clientId, currentStatus, size = 'sm' }: StatusDropdownProps) {
   const [open, setOpen] = useState(false)
+  const [openUp, setOpenUp] = useState(false)
   const [status, setStatus] = useState(currentStatus)
   const [loading, setLoading] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -62,7 +63,14 @@ export function StatusDropdown({ clientId, currentStatus, size = 'sm' }: StatusD
     <div ref={ref} className="relative inline-block">
       <button
         type="button"
-        onClick={() => setOpen(!open)}
+        onClick={() => {
+          if (!open && ref.current) {
+            const rect = ref.current.getBoundingClientRect()
+            const spaceBelow = window.innerHeight - rect.bottom
+            setOpenUp(spaceBelow < 200)
+          }
+          setOpen(!open)
+        }}
         disabled={loading}
         className={cn(
           'inline-flex items-center gap-1 rounded-full font-medium transition-opacity cursor-pointer',
@@ -76,7 +84,10 @@ export function StatusDropdown({ clientId, currentStatus, size = 'sm' }: StatusD
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full z-50 mt-1 min-w-[160px] rounded-lg border bg-popover p-1 shadow-lg">
+        <div className={cn(
+          'absolute left-0 z-50 min-w-[160px] rounded-lg border bg-popover p-1 shadow-lg',
+          openUp ? 'bottom-full mb-1' : 'top-full mt-1'
+        )}>
           {ALL_STATUSES.map((s) => (
             <button
               key={s}
