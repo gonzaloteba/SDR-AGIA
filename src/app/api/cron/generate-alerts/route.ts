@@ -99,23 +99,27 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 2. Phase change approaching (3 days before)
+    // 2. Phase change approaching (uses custom alert window or default 3 days)
     if (!alertExists(client.id, 'phase_change') && client.phase_change_date) {
       const daysUntilPhaseChange = differenceInDays(
         new Date(client.phase_change_date),
         now
       )
-      if (daysUntilPhaseChange >= 0 && daysUntilPhaseChange <= 3 && client.current_phase < 3) {
+      const alertWindow = client.custom_phase_duration_days
+        ? Math.min(3, client.custom_phase_duration_days)
+        : 3
+      if (daysUntilPhaseChange >= 0 && daysUntilPhaseChange <= alertWindow && client.current_phase < 3) {
         const phaseNames: Record<number, string> = {
           2: 'Fase 2 - Reintroducción',
           3: 'Fase 3 - Low-Carb Flexible',
         }
         const nextPhase = client.current_phase + 1
+        const customNote = client.custom_phase_duration_days ? ' (intervalo personalizado)' : ''
         alertsToCreate.push({
           client_id: client.id,
           type: 'phase_change',
           severity: daysUntilPhaseChange <= 1 ? 'high' : 'medium',
-          message: `${client.first_name} ${client.last_name} cambia a ${phaseNames[nextPhase] || `fase ${nextPhase}`} en ${daysUntilPhaseChange} días. Preparar indicaciones de alimentación.`,
+          message: `${client.first_name} ${client.last_name} cambia a ${phaseNames[nextPhase] || `fase ${nextPhase}`} en ${daysUntilPhaseChange} días${customNote}. Preparar indicaciones de alimentación.`,
         })
       }
     }

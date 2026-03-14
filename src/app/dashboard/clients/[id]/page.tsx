@@ -57,10 +57,12 @@ export default async function ClientDetailPage({ params }: Props) {
         <PendingAlerts alerts={alerts || []} />
 
         <PhaseTracker
+          clientId={client.id}
           currentPhase={client.current_phase as NutritionPhase}
           startDate={client.start_date}
           endDate={client.end_date}
           phaseChangeDate={client.phase_change_date}
+          customPhaseDurationDays={client.custom_phase_duration_days}
         />
 
         <ClientDetailTabs

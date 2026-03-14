@@ -26,6 +26,7 @@ export interface Client {
   renewal_date: string
   current_phase: NutritionPhase
   phase_change_date: string | null
+  custom_phase_duration_days: number | null
   closer: string | null
   drive_folder_url: string | null
   birth_date: string | null
