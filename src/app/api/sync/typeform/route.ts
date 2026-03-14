@@ -48,19 +48,65 @@ function extractValue(answer: any): unknown {
   }
 }
 
+/** Remove accents/diacritics for comparison */
+function removeAccents(str: string): string {
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+}
+
 async function findClientByName(
   supabase: ReturnType<typeof getAdminClient>,
   firstName: string,
   lastName: string
 ): Promise<{ id: string } | null> {
-  const { data } = await supabase
+  const fn = firstName.trim()
+  const ln = lastName.trim()
+
+  // 1. Try exact match (case-insensitive)
+  const { data: exact } = await supabase
     .from('clients')
     .select('id')
-    .ilike('first_name', firstName.trim())
-    .ilike('last_name', lastName.trim())
+    .ilike('first_name', fn)
+    .ilike('last_name', ln)
     .limit(1)
     .single()
-  return data
+  if (exact) return exact
+
+  // 2. Fetch all clients and do fuzzy matching (accent-insensitive, partial last name)
+  const { data: allClients } = await supabase
+    .from('clients')
+    .select('id, first_name, last_name')
+
+  if (!allClients || allClients.length === 0) return null
+
+  const normFn = removeAccents(fn).toLowerCase()
+  const normLn = removeAccents(ln).toLowerCase()
+  // Extract first word of submitted last name for partial matching
+  const lnFirstWord = normLn.split(/\s+/)[0]
+
+  for (const client of allClients) {
+    const cFn = removeAccents(client.first_name || '').toLowerCase().trim()
+    const cLn = removeAccents(client.last_name || '').toLowerCase().trim()
+
+    // Match first name: exact, or first word matches (e.g. "Jesus" matches "Jesús Eduardo")
+    const fnMatch =
+      cFn === normFn ||
+      normFn === cFn.split(/\s+/)[0] ||
+      cFn === normFn.split(/\s+/)[0]
+
+    if (!fnMatch) continue
+
+    // Match last name: exact, starts with, or first word matches
+    const lnMatch =
+      cLn === normLn ||
+      normLn.startsWith(cLn) ||
+      cLn.startsWith(normLn) ||
+      cLn.split(/\s+/)[0] === lnFirstWord ||
+      cLn === lnFirstWord
+
+    if (lnMatch) return { id: client.id }
+  }
+
+  return null
 }
 
 /** Fetch all responses from a Typeform form (handles pagination) */
