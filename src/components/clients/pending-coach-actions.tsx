@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ClipboardList, CheckCircle2, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -11,12 +11,15 @@ interface PendingCoachActionsProps {
 }
 
 export function PendingCoachActions({ calls }: PendingCoachActionsProps) {
-  const pendingCalls = calls.filter(
-    (c) => c.coach_actions && !c.coach_actions_completed
+  const pendingCalls = useMemo(
+    () => calls.filter((c) => c.coach_actions && !c.coach_actions_completed),
+    [calls]
   )
-  const [items, setItems] = useState(pendingCalls)
+  const [completedIds, setCompletedIds] = useState<Set<string>>(new Set())
   const [completingId, setCompletingId] = useState<string | null>(null)
   const router = useRouter()
+
+  const items = pendingCalls.filter((c) => !completedIds.has(c.id))
 
   async function completeActions(callId: string) {
     setCompletingId(callId)
@@ -27,7 +30,7 @@ export function PendingCoachActions({ calls }: PendingCoachActionsProps) {
       .eq('id', callId)
 
     if (!error) {
-      setItems((prev) => prev.filter((c) => c.id !== callId))
+      setCompletedIds((prev) => new Set(prev).add(callId))
       router.refresh()
     }
     setCompletingId(null)
