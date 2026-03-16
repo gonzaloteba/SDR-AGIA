@@ -5,6 +5,7 @@ import { Phone, Plus, ChevronDown, ChevronUp, FileText, Video, ExternalLink, Cli
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { cn, inputClass, textareaClass } from '@/lib/utils'
+import { completeCoachActions as completeCoachActionsAction } from '@/app/dashboard/clients/[id]/actions'
 import type { Call } from '@/lib/types'
 
 interface CallsLogProps {
@@ -42,11 +43,7 @@ export function CallsLog({ calls, clientId }: CallsLogProps) {
 
   async function completeCoachActions(callId: string) {
     setCompletingAction(callId)
-    const supabase = createClient()
-    await supabase
-      .from('calls')
-      .update({ coach_actions_completed: true })
-      .eq('id', callId)
+    await completeCoachActionsAction(callId)
     setCompletingAction(null)
     router.refresh()
   }

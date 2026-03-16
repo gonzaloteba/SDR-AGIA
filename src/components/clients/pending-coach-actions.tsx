@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ClipboardList, CheckCircle2, Loader2 } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
+import { completeCoachActions } from '@/app/dashboard/clients/[id]/actions'
 import type { Call } from '@/lib/types'
 
 interface PendingCoachActionsProps {
@@ -21,15 +21,11 @@ export function PendingCoachActions({ calls }: PendingCoachActionsProps) {
 
   const items = pendingCalls.filter((c) => !completedIds.has(c.id))
 
-  async function completeActions(callId: string) {
+  async function handleComplete(callId: string) {
     setCompletingId(callId)
-    const supabase = createClient()
-    const { error } = await supabase
-      .from('calls')
-      .update({ coach_actions_completed: true })
-      .eq('id', callId)
+    const result = await completeCoachActions(callId)
 
-    if (!error) {
+    if (result.success) {
       setCompletedIds((prev) => new Set(prev).add(callId))
       router.refresh()
     }
@@ -62,7 +58,7 @@ export function PendingCoachActions({ calls }: PendingCoachActionsProps) {
               <p className="text-sm whitespace-pre-wrap">{call.coach_actions}</p>
             </div>
             <button
-              onClick={() => completeActions(call.id)}
+              onClick={() => handleComplete(call.id)}
               disabled={completingId === call.id}
               className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 transition-colors disabled:opacity-50 shrink-0"
             >
