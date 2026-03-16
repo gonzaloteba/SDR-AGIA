@@ -21,6 +21,8 @@ export function ClientDetailHeader({ client, alertCount }: ClientDetailHeaderPro
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [endDateValue, setEndDateValue] = useState(client.end_date)
+  const [isRenewed, setIsRenewed] = useState(client.is_renewed)
+  const [isSuccessCase, setIsSuccessCase] = useState(client.is_success_case)
   const [togglingBadge, setTogglingBadge] = useState<string | null>(null)
   const router = useRouter()
 
@@ -40,9 +42,20 @@ export function ClientDetailHeader({ client, alertCount }: ClientDetailHeaderPro
   }
 
   async function handleToggleBadge(badge: 'is_renewed' | 'is_success_case') {
+    const currentValue = badge === 'is_renewed' ? isRenewed : isSuccessCase
+    const newValue = !currentValue
+
+    // Optimistic update
+    if (badge === 'is_renewed') setIsRenewed(newValue)
+    else setIsSuccessCase(newValue)
+
     setTogglingBadge(badge)
-    const result = await toggleClientBadge(client.id, badge, !client[badge])
-    if (result.success) {
+    const result = await toggleClientBadge(client.id, badge, newValue)
+    if (!result.success) {
+      // Revert on failure
+      if (badge === 'is_renewed') setIsRenewed(currentValue)
+      else setIsSuccessCase(currentValue)
+    } else {
       router.refresh()
     }
     setTogglingBadge(null)
@@ -68,12 +81,12 @@ export function ClientDetailHeader({ client, alertCount }: ClientDetailHeaderPro
                 currentStatus={client.status}
                 size="md"
               />
-              {client.is_renewed && (
+              {isRenewed && (
                 <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', BADGE_CONFIG.renewed.colors)}>
                   {BADGE_CONFIG.renewed.label}
                 </span>
               )}
-              {client.is_success_case && (
+              {isSuccessCase && (
                 <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', BADGE_CONFIG.success_case.colors)}>
                   {BADGE_CONFIG.success_case.label}
                 </span>
@@ -180,26 +193,26 @@ export function ClientDetailHeader({ client, alertCount }: ClientDetailHeaderPro
             disabled={togglingBadge === 'is_renewed'}
             className={cn(
               'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
-              client.is_renewed
+              isRenewed
                 ? 'bg-teal-100 text-teal-800 border-teal-300'
                 : 'bg-muted/50 text-muted-foreground border-dashed hover:bg-teal-50 hover:text-teal-700 hover:border-teal-300',
               togglingBadge === 'is_renewed' && 'opacity-50'
             )}
           >
-            {togglingBadge === 'is_renewed' ? '...' : client.is_renewed ? '✓ Renovado' : 'Renovado'}
+            {togglingBadge === 'is_renewed' ? '...' : isRenewed ? '✓ Renovado' : 'Renovado'}
           </button>
           <button
             onClick={() => handleToggleBadge('is_success_case')}
             disabled={togglingBadge === 'is_success_case'}
             className={cn(
               'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
-              client.is_success_case
+              isSuccessCase
                 ? 'bg-purple-100 text-purple-800 border-purple-300'
                 : 'bg-muted/50 text-muted-foreground border-dashed hover:bg-purple-50 hover:text-purple-700 hover:border-purple-300',
               togglingBadge === 'is_success_case' && 'opacity-50'
             )}
           >
-            {togglingBadge === 'is_success_case' ? '...' : client.is_success_case ? '✓ Caso de Éxito' : 'Caso de Éxito'}
+            {togglingBadge === 'is_success_case' ? '...' : isSuccessCase ? '✓ Caso de Éxito' : 'Caso de Éxito'}
           </button>
         </div>
       </div>
