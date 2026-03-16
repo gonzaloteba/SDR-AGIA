@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createHmac } from 'crypto'
 import { getAdminClient } from '@/lib/supabase/admin'
+import type { AdminClient } from '@/lib/supabase/admin'
 import {
   CHECKIN_FORM_ID,
   AUDIT_FORM_ID,
@@ -15,6 +16,7 @@ import {
   mapAuditFields,
   buildCheckInData,
 } from '@/lib/typeform-helpers'
+import { persistPhoto, persistPhotos } from '@/lib/photo-storage'
 
 export async function POST(request: NextRequest) {
   try {
@@ -118,6 +120,21 @@ export async function POST(request: NextRequest) {
         await handleAudit(supabase, client.id, answerMap, submittedAt)
         action = 'client_updated'
       }
+
+      // Persist the initial photo to Supabase Storage (replace temp URL)
+      const photoUrl = answerMap.get('1BGJgXqDAcqc') as string | undefined
+      if (photoUrl && client) {
+        const permanentUrl = await persistPhoto(supabase, photoUrl, client.id, 'initial')
+        // Update the client record with the permanent URL
+        await supabase
+          .from('clients')
+          .update({ initial_photo_url: permanentUrl })
+          .eq('id', client.id)
+      }
+
+      // Create an initial check-in from the audit data
+      await createInitialCheckIn(supabase, client.id, answerMap, submittedAt, responseId)
+
     } else if (formId === CHECKIN_FORM_ID) {
       if (!client) {
         // Auto-create client from check-in data
@@ -166,13 +183,18 @@ export async function POST(request: NextRequest) {
 // Check-In Handler
 // ============================================
 async function handleCheckIn(
-  supabase: ReturnType<typeof getAdminClient>,
+  supabase: AdminClient,
   clientId: string,
   answerMap: Map<string, unknown>,
   submittedAt: string,
   responseId: string
 ) {
   const checkInData = buildCheckInData(answerMap, clientId, submittedAt, responseId)
+
+  // Persist check-in photos to Supabase Storage
+  if (checkInData.photo_urls && Array.isArray(checkInData.photo_urls) && checkInData.photo_urls.length > 0) {
+    checkInData.photo_urls = await persistPhotos(supabase, checkInData.photo_urls, clientId, 'checkin')
+  }
 
   const { error: insertError } = await supabase
     .from('check_ins')
@@ -193,7 +215,7 @@ async function handleCheckIn(
 // Auto-create client from Auditoría Inicial
 // ============================================
 async function createClientFromAudit(
-  supabase: ReturnType<typeof getAdminClient>,
+  supabase: AdminClient,
   firstName: string,
   lastName: string,
   answerMap: Map<string, unknown>,
@@ -225,7 +247,7 @@ async function createClientFromAudit(
 // Auditoría Inicial Handler
 // ============================================
 async function handleAudit(
-  supabase: ReturnType<typeof getAdminClient>,
+  supabase: AdminClient,
   clientId: string,
   answerMap: Map<string, unknown>,
   submittedAt: string
@@ -243,6 +265,52 @@ async function handleAudit(
     .eq('id', clientId)
 
   if (updateError) throw updateError
+}
+
+// ============================================
+// Create initial check-in from Auditoría data
+// ============================================
+async function createInitialCheckIn(
+  supabase: AdminClient,
+  clientId: string,
+  answerMap: Map<string, unknown>,
+  submittedAt: string,
+  responseId: string
+) {
+  // Map audit fields to check-in fields
+  const photoUrl = answerMap.get('1BGJgXqDAcqc') as string | undefined // initial_photo_url
+  const energyLevel = answerMap.get('PPTeB980IRSG') as number | undefined // energy_level_initial
+  const sleepQuality = answerMap.get('x02zDXgVRaQ4') as number | undefined // sleep_quality_initial
+  const sleepHoursAvg = answerMap.get('OG5Q3AEuSwx5') as string | undefined // sleep_hours_avg
+
+  // Persist photo to storage if present
+  let photoUrls: string[] | null = null
+  if (photoUrl) {
+    const permanentUrl = await persistPhoto(supabase, photoUrl, clientId, 'audit')
+    photoUrls = [permanentUrl]
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const checkInData: Record<string, any> = {
+    client_id: clientId,
+    submitted_at: submittedAt,
+    typeform_response_id: `audit-${responseId}`,
+    notes: 'Check-in inicial (Auditoría Inicial)',
+    photo_urls: photoUrls,
+  }
+
+  if (typeof energyLevel === 'number') checkInData.energy_level = energyLevel
+  if (typeof sleepQuality === 'number') checkInData.sleep_quality = sleepQuality
+  if (sleepHoursAvg) {
+    const num = parseFloat(String(sleepHoursAvg))
+    if (!isNaN(num)) checkInData.sleep_hours = num
+  }
+
+  const { error } = await supabase
+    .from('check_ins')
+    .insert(checkInData)
+
+  if (error) throw error
 }
 
 // ============================================
