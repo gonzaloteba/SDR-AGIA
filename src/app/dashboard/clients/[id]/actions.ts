@@ -1,14 +1,15 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { createClient } from '@/lib/supabase/server'
+import { getAdminClient } from '@/lib/supabase/admin'
 
 export async function completeCoachActions(callId: string) {
-  const supabase = await createClient()
+  const supabase = getAdminClient()
 
-  const { error } = await supabase.rpc('complete_coach_actions', {
-    call_id: callId,
-  })
+  const { error } = await supabase
+    .from('calls')
+    .update({ coach_actions_completed: true })
+    .eq('id', callId)
 
   if (error) {
     return { success: false, error: error.message }
