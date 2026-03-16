@@ -1,8 +1,13 @@
+'use client'
+
+import { useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, ExternalLink, Edit } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { ArrowLeft, ExternalLink, Edit, Pencil, Check, X, Loader2 } from 'lucide-react'
 import { PHASE_LABELS } from '@/lib/constants'
 import { getDaysRemaining } from '@/lib/health-score'
 import { StatusDropdown } from '@/components/clients/status-dropdown'
+import { updateClientEndDate } from '@/app/dashboard/clients/[id]/actions'
 import type { Client, NutritionPhase } from '@/lib/types'
 
 interface ClientDetailHeaderProps {
@@ -12,6 +17,25 @@ interface ClientDetailHeaderProps {
 
 export function ClientDetailHeader({ client, alertCount }: ClientDetailHeaderProps) {
   const daysRemaining = getDaysRemaining(client.end_date)
+  const [editing, setEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [endDateValue, setEndDateValue] = useState(client.end_date)
+  const router = useRouter()
+
+  async function handleSave() {
+    setSaving(true)
+    const result = await updateClientEndDate(client.id, endDateValue)
+    if (result.success) {
+      setEditing(false)
+      router.refresh()
+    }
+    setSaving(false)
+  }
+
+  function handleCancel() {
+    setEndDateValue(client.end_date)
+    setEditing(false)
+  }
 
   return (
     <div className="rounded-xl border bg-card p-6 shadow-sm">
@@ -41,7 +65,41 @@ export function ClientDetailHeader({ client, alertCount }: ClientDetailHeaderPro
             </div>
             <div className="mt-1 flex items-center gap-4 text-sm text-muted-foreground">
               <span>{PHASE_LABELS[client.current_phase as NutritionPhase]}</span>
-              <span>{daysRemaining} días restantes</span>
+              {editing ? (
+                <span className="inline-flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={endDateValue}
+                    onChange={(e) => setEndDateValue(e.target.value)}
+                    className="rounded border px-2 py-0.5 text-xs"
+                  />
+                  <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="rounded p-0.5 text-emerald-600 hover:bg-emerald-50"
+                  >
+                    {saving ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Check className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+                  <button
+                    onClick={handleCancel}
+                    className="rounded p-0.5 text-muted-foreground hover:bg-muted"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </span>
+              ) : (
+                <button
+                  onClick={() => setEditing(true)}
+                  className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+                >
+                  <span>{daysRemaining} días restantes</span>
+                  <Pencil className="h-3 w-3" />
+                </button>
+              )}
               <span>
                 Inicio: {new Date(client.start_date).toLocaleDateString('es-ES')}
               </span>
