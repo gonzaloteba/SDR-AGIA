@@ -26,6 +26,7 @@ export interface Client {
   current_phase: NutritionPhase
   phase_change_date: string | null
   custom_phase_duration_days: number | null
+  coach_id: string | null
   closer: string | null
   is_renewed: boolean
   is_success_case: boolean
@@ -120,6 +121,7 @@ export interface CheckIn {
 export interface Call {
   id: string
   client_id: string
+  coach_id: string | null
   call_date: string
   duration_minutes: number
   notes: string | null

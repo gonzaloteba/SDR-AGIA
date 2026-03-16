@@ -71,7 +71,12 @@ export function ClientForm({ client }: ClientFormProps) {
         return
       }
     } else {
-      const { error: err } = await supabase.from('clients').insert(data)
+      // Auto-assign the current user as coach
+      const { data: { user } } = await supabase.auth.getUser()
+      const { error: err } = await supabase.from('clients').insert({
+        ...data,
+        coach_id: user?.id || null,
+      })
       if (err) {
         setError(err.message)
         setLoading(false)

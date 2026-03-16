@@ -26,8 +26,11 @@ export function CallsLog({ calls, clientId }: CallsLogProps) {
     const formData = new FormData(e.currentTarget)
 
     const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
     await supabase.from('calls').insert({
       client_id: clientId,
+      coach_id: user?.id || null,
       call_date: formData.get('call_date') as string,
       duration_minutes: parseInt(formData.get('duration') as string) || 15,
       notes: (formData.get('notes') as string) || null,

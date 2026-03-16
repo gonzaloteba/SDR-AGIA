@@ -3,11 +3,19 @@ import { Header } from '@/components/layout/header'
 import { ClientTable } from '@/components/clients/client-table'
 import { calculateHealthScore, getDaysRemaining } from '@/lib/health-score'
 import { startOfMonth } from 'date-fns'
+import { getCurrentCoach, isAdmin } from '@/lib/auth'
 import type { ClientWithHealth } from '@/lib/types'
 
 export default async function ClientsPage() {
   const supabase = await createClient()
+  const coach = await getCurrentCoach()
   const monthStart = startOfMonth(new Date()).toISOString()
+
+  // Coaches see only their clients; admins see all
+  const clientsQuery = supabase.from('clients').select('*').order('first_name')
+  if (coach && !isAdmin(coach)) {
+    clientsQuery.eq('coach_id', coach.id)
+  }
 
   const [
     { data: clients },
@@ -16,7 +24,7 @@ export default async function ClientsPage() {
     { data: unresolvedAlerts },
     { data: pendingCoachActions },
   ] = await Promise.all([
-    supabase.from('clients').select('*').order('first_name'),
+    clientsQuery,
     supabase
       .from('check_ins')
       .select('client_id, submitted_at')
