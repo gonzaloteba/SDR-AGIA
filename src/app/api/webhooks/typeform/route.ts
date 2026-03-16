@@ -127,6 +127,7 @@ export async function POST(request: NextRequest) {
             first_name: firstName.trim(),
             last_name: lastName.trim(),
             start_date: (submittedAt || new Date().toISOString()).split('T')[0],
+            coach_id: process.env.DEFAULT_COACH_ID || null,
           })
           .select('id')
           .single()
@@ -204,6 +205,7 @@ async function createClientFromAudit(
     last_name: lastName.trim(),
     start_date: submittedAt.split('T')[0],
     onboarding_submitted_at: submittedAt,
+    coach_id: process.env.DEFAULT_COACH_ID || null,
   }
 
   mapAuditFields(answerMap, clientData)
