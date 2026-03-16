@@ -1,4 +1,4 @@
-export type ClientStatus = 'active' | 'cancelled' | 'completed' | 'renewed' | 'success_case'
+export type ClientStatus = 'active' | 'cancelled' | 'completed'
 export type NutritionPhase = 1 | 2 | 3
 export type AlertType =
   | 'missed_checkin'
@@ -27,6 +27,8 @@ export interface Client {
   phase_change_date: string | null
   custom_phase_duration_days: number | null
   closer: string | null
+  is_renewed: boolean
+  is_success_case: boolean
   drive_folder_url: string | null
   birth_date: string | null
   height_cm: number | null

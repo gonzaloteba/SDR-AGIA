@@ -4,10 +4,11 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, ExternalLink, Edit, Pencil, Check, X, Loader2 } from 'lucide-react'
-import { PHASE_LABELS } from '@/lib/constants'
+import { PHASE_LABELS, BADGE_CONFIG } from '@/lib/constants'
 import { getDaysRemaining } from '@/lib/health-score'
 import { StatusDropdown } from '@/components/clients/status-dropdown'
-import { updateClientEndDate } from '@/app/dashboard/clients/[id]/actions'
+import { updateClientEndDate, toggleClientBadge } from '@/app/dashboard/clients/[id]/actions'
+import { cn } from '@/lib/utils'
 import type { Client, NutritionPhase } from '@/lib/types'
 
 interface ClientDetailHeaderProps {
@@ -20,6 +21,7 @@ export function ClientDetailHeader({ client, alertCount }: ClientDetailHeaderPro
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [endDateValue, setEndDateValue] = useState(client.end_date)
+  const [togglingBadge, setTogglingBadge] = useState<string | null>(null)
   const router = useRouter()
 
   async function handleSave() {
@@ -35,6 +37,15 @@ export function ClientDetailHeader({ client, alertCount }: ClientDetailHeaderPro
   function handleCancel() {
     setEndDateValue(client.end_date)
     setEditing(false)
+  }
+
+  async function handleToggleBadge(badge: 'is_renewed' | 'is_success_case') {
+    setTogglingBadge(badge)
+    const result = await toggleClientBadge(client.id, badge, !client[badge])
+    if (result.success) {
+      router.refresh()
+    }
+    setTogglingBadge(null)
   }
 
   return (
@@ -57,6 +68,16 @@ export function ClientDetailHeader({ client, alertCount }: ClientDetailHeaderPro
                 currentStatus={client.status}
                 size="md"
               />
+              {client.is_renewed && (
+                <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', BADGE_CONFIG.renewed.colors)}>
+                  {BADGE_CONFIG.renewed.label}
+                </span>
+              )}
+              {client.is_success_case && (
+                <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', BADGE_CONFIG.success_case.colors)}>
+                  {BADGE_CONFIG.success_case.label}
+                </span>
+              )}
               {alertCount > 0 && (
                 <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800">
                   {alertCount} alerta{alertCount > 1 ? 's' : ''}
@@ -129,28 +150,58 @@ export function ClientDetailHeader({ client, alertCount }: ClientDetailHeaderPro
         </div>
       </div>
 
-      {/* Contact info */}
-      <div className="mt-4 flex gap-6 text-sm">
-        {client.email && (
+      {/* Contact info + Badge toggles */}
+      <div className="mt-4 flex items-center justify-between">
+        <div className="flex gap-6 text-sm">
+          {client.email && (
+            <span className="text-muted-foreground">
+              Email: <span className="text-foreground">{client.email}</span>
+            </span>
+          )}
+          {client.phone && (
+            <span className="text-muted-foreground">
+              Tel: <span className="text-foreground">{client.phone}</span>
+            </span>
+          )}
+          {client.closer && (
+            <span className="text-muted-foreground">
+              Closer: <span className="text-foreground">{client.closer}</span>
+            </span>
+          )}
           <span className="text-muted-foreground">
-            Email: <span className="text-foreground">{client.email}</span>
+            Renovación: <span className="text-foreground">
+              {new Date(client.renewal_date).toLocaleDateString('es-ES')}
+            </span>
           </span>
-        )}
-        {client.phone && (
-          <span className="text-muted-foreground">
-            Tel: <span className="text-foreground">{client.phone}</span>
-          </span>
-        )}
-        {client.closer && (
-          <span className="text-muted-foreground">
-            Closer: <span className="text-foreground">{client.closer}</span>
-          </span>
-        )}
-        <span className="text-muted-foreground">
-          Renovación: <span className="text-foreground">
-            {new Date(client.renewal_date).toLocaleDateString('es-ES')}
-          </span>
-        </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handleToggleBadge('is_renewed')}
+            disabled={togglingBadge === 'is_renewed'}
+            className={cn(
+              'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+              client.is_renewed
+                ? 'bg-teal-100 text-teal-800 border-teal-300'
+                : 'bg-muted/50 text-muted-foreground border-dashed hover:bg-teal-50 hover:text-teal-700 hover:border-teal-300',
+              togglingBadge === 'is_renewed' && 'opacity-50'
+            )}
+          >
+            {togglingBadge === 'is_renewed' ? '...' : client.is_renewed ? '✓ Renovado' : 'Renovado'}
+          </button>
+          <button
+            onClick={() => handleToggleBadge('is_success_case')}
+            disabled={togglingBadge === 'is_success_case'}
+            className={cn(
+              'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+              client.is_success_case
+                ? 'bg-purple-100 text-purple-800 border-purple-300'
+                : 'bg-muted/50 text-muted-foreground border-dashed hover:bg-purple-50 hover:text-purple-700 hover:border-purple-300',
+              togglingBadge === 'is_success_case' && 'opacity-50'
+            )}
+          >
+            {togglingBadge === 'is_success_case' ? '...' : client.is_success_case ? '✓ Caso de Éxito' : 'Caso de Éxito'}
+          </button>
+        </div>
       </div>
     </div>
   )

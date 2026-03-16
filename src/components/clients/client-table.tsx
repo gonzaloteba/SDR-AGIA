@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Search, Plus, ClipboardList } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { PHASE_LABELS, HEALTH_COLORS } from '@/lib/constants'
+import { PHASE_LABELS, HEALTH_COLORS, BADGE_CONFIG } from '@/lib/constants'
 import { StatusDropdown } from '@/components/clients/status-dropdown'
 import type { ClientWithHealth, NutritionPhase } from '@/lib/types'
 
@@ -16,6 +16,7 @@ export function ClientTable({ clients }: ClientTableProps) {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [healthFilter, setHealthFilter] = useState<string>('all')
+  const [badgeFilter, setBadgeFilter] = useState<string>('all')
 
   const filtered = clients.filter((client) => {
     const matchesSearch =
@@ -24,7 +25,11 @@ export function ClientTable({ clients }: ClientTableProps) {
         .includes(search.toLowerCase())
     const matchesStatus = statusFilter === 'all' || client.status === statusFilter
     const matchesHealth = healthFilter === 'all' || client.health_score === healthFilter
-    return matchesSearch && matchesStatus && matchesHealth
+    const matchesBadge =
+      badgeFilter === 'all' ||
+      (badgeFilter === 'renewed' && client.is_renewed) ||
+      (badgeFilter === 'success_case' && client.is_success_case)
+    return matchesSearch && matchesStatus && matchesHealth && matchesBadge
   })
 
   return (
@@ -49,8 +54,15 @@ export function ClientTable({ clients }: ClientTableProps) {
           <option value="all">Todos los estados</option>
           <option value="active">Activo</option>
           <option value="completed">Concluido</option>
-          <option value="renewed">Renovado</option>
           <option value="cancelled">Cancelado</option>
+        </select>
+        <select
+          value={badgeFilter}
+          onChange={(e) => setBadgeFilter(e.target.value)}
+          className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+        >
+          <option value="all">Todas las insignias</option>
+          <option value="renewed">Renovado</option>
           <option value="success_case">Caso de Éxito</option>
         </select>
         <select
@@ -119,6 +131,16 @@ export function ClientTable({ clients }: ClientTableProps) {
                       >
                         {client.first_name} {client.last_name}
                       </Link>
+                      {client.is_renewed && (
+                        <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-medium', BADGE_CONFIG.renewed.colors)}>
+                          {BADGE_CONFIG.renewed.label}
+                        </span>
+                      )}
+                      {client.is_success_case && (
+                        <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-medium', BADGE_CONFIG.success_case.colors)}>
+                          {BADGE_CONFIG.success_case.label}
+                        </span>
+                      )}
                       {client.pending_coach_actions > 0 && (
                         <span
                           className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-medium text-orange-700"

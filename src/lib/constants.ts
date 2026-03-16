@@ -17,18 +17,19 @@ export const PHASE_ALERT_DAYS_BEFORE = 3
 export const STATUS_LABELS: Record<ClientStatus, string> = {
   active: 'Activo',
   completed: 'Concluido',
-  renewed: 'Renovado',
   cancelled: 'Cancelado',
-  success_case: 'Caso de Éxito',
 }
 
 export const STATUS_COLORS: Record<ClientStatus, string> = {
   active: 'bg-green-100 text-green-800',
   completed: 'bg-blue-100 text-blue-800',
-  renewed: 'bg-teal-100 text-teal-800',
   cancelled: 'bg-red-100 text-red-800',
-  success_case: 'bg-purple-100 text-purple-800',
 }
+
+export const BADGE_CONFIG = {
+  renewed: { label: 'Renovado', colors: 'bg-teal-100 text-teal-800' },
+  success_case: { label: 'Caso de Éxito', colors: 'bg-purple-100 text-purple-800' },
+} as const
 
 export const ALERT_TYPE_LABELS: Record<AlertType, string> = {
   missed_checkin: 'Check-in perdido',

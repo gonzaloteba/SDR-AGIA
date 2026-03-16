@@ -315,9 +315,7 @@ export function ClientForm({ client }: ClientFormProps) {
             >
               <option value="active">Activo</option>
               <option value="completed">Concluido</option>
-              <option value="renewed">Renovado</option>
               <option value="cancelled">Cancelado</option>
-              <option value="success_case">Caso de Éxito</option>
             </select>
           </div>
           <div>
