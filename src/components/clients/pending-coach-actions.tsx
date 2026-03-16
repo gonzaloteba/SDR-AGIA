@@ -24,8 +24,6 @@ export function PendingCoachActions({ calls }: PendingCoachActionsProps) {
   async function handleComplete(callId: string) {
     setCompletingId(callId)
     const result = await completeCoachActions(callId)
-    console.log('completeCoachActions result:', JSON.stringify(result))
-
     if (result.success) {
       setCompletedIds((prev) => new Set(prev).add(callId))
       router.refresh()
