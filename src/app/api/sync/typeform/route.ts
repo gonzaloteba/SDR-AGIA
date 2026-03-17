@@ -15,7 +15,7 @@ import {
   buildCheckInData,
   type TypeformAnswer,
 } from '@/lib/typeform-helpers'
-import { persistPhoto, persistPhotos } from '@/lib/photo-storage'
+import { persistPhoto, persistPhotos, fixBrokenPhotoUrls } from '@/lib/photo-storage'
 
 const TYPEFORM_API_BASE = 'https://api.typeform.com'
 
@@ -257,7 +257,16 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ success: true, results })
+    // ========== AUTO-FIX BROKEN PHOTOS ==========
+    // Every sync run, scan for any photo URLs still pointing at Typeform
+    // and re-persist them to Supabase Storage automatically.
+    const photoFix = await fixBrokenPhotoUrls(supabase)
+
+    return NextResponse.json({
+      success: true,
+      results,
+      photo_fix: photoFix,
+    })
   } catch (error) {
     return NextResponse.json(
       { error: 'Internal server error', detail: (error as Error).message },
