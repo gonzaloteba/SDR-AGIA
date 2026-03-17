@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
 
     const supabase = getAdminClient()
     const results = {
-      audit: { fetched: 0, created: 0, updated: 0, skipped: 0, errors: [] as string[] },
+      audit: { fetched: 0, created: 0, updated: 0, skipped: 0, initial_checkins_created: 0, errors: [] as string[] },
       checkin: { fetched: 0, inserted: 0, skipped: 0, clients_created: 0, auto_created_clients: [] as string[], errors: [] as string[] },
     }
 
@@ -131,11 +131,43 @@ export async function POST(request: NextRequest) {
           } else {
             results.audit.created++
             // Persist initial photo
+            let persistedPhotoUrl: string | null = null
             try {
               const photoUrl = answerMap.get('1BGJgXqDAcqc') as string | undefined
               if (photoUrl) {
-                const permanentUrl = await persistPhoto(supabase, photoUrl, newClient.id, 'initial')
-                await supabase.from('clients').update({ initial_photo_url: permanentUrl }).eq('id', newClient.id)
+                persistedPhotoUrl = await persistPhoto(supabase, photoUrl, newClient.id, 'initial')
+                await supabase.from('clients').update({ initial_photo_url: persistedPhotoUrl }).eq('id', newClient.id)
+              }
+            } catch { /* non-critical */ }
+
+            // Create initial check-in from audit data (same as webhook)
+            try {
+              const auditResponseId = `audit-${response.token}`
+              const { data: existingInitial } = await supabase
+                .from('check_ins')
+                .select('id')
+                .eq('typeform_response_id', auditResponseId)
+                .limit(1)
+                .single()
+              if (!existingInitial) {
+                const checkInData: Record<string, unknown> = {
+                  client_id: newClient.id,
+                  submitted_at: submittedAt,
+                  typeform_response_id: auditResponseId,
+                  notes: 'Check-in inicial (Auditoría Inicial)',
+                  photo_urls: persistedPhotoUrl ? [persistedPhotoUrl] : null,
+                }
+                const energyLevel = answerMap.get('PPTeB980IRSG') as number | undefined
+                const sleepQuality = answerMap.get('RndHdZQ2ENMg') as number | undefined
+                const sleepHoursAvg = answerMap.get('7cZDeEaVwh7B') as string | undefined
+                if (typeof energyLevel === 'number') checkInData.energy_level = energyLevel
+                if (typeof sleepQuality === 'number') checkInData.sleep_quality = sleepQuality
+                if (sleepHoursAvg) {
+                  const num = parseFloat(String(sleepHoursAvg))
+                  if (!isNaN(num)) checkInData.sleep_hours = num
+                }
+                await supabase.from('check_ins').insert(checkInData)
+                results.audit.initial_checkins_created++
               }
             } catch { /* non-critical */ }
           }
@@ -158,11 +190,12 @@ export async function POST(request: NextRequest) {
           }
 
           // Persist initial photo
+          let persistedPhotoUrl: string | null = null
           try {
             const photoUrl = answerMap.get('1BGJgXqDAcqc') as string | undefined
             if (photoUrl) {
-              const permanentUrl = await persistPhoto(supabase, photoUrl, client.id, 'initial')
-              updateData.initial_photo_url = permanentUrl
+              persistedPhotoUrl = await persistPhoto(supabase, photoUrl, client.id, 'initial')
+              updateData.initial_photo_url = persistedPhotoUrl
             }
           } catch { /* non-critical */ }
 
@@ -171,6 +204,37 @@ export async function POST(request: NextRequest) {
             results.audit.errors.push(`Update ${firstName} ${lastName}: ${error.message}`)
           } else {
             results.audit.updated++
+
+            // Create initial check-in from audit data if it doesn't exist yet
+            try {
+              const auditResponseId = `audit-${response.token}`
+              const { data: existingInitial } = await supabase
+                .from('check_ins')
+                .select('id')
+                .eq('typeform_response_id', auditResponseId)
+                .limit(1)
+                .single()
+              if (!existingInitial) {
+                const checkInData: Record<string, unknown> = {
+                  client_id: client.id,
+                  submitted_at: submittedAt,
+                  typeform_response_id: auditResponseId,
+                  notes: 'Check-in inicial (Auditoría Inicial)',
+                  photo_urls: persistedPhotoUrl ? [persistedPhotoUrl] : null,
+                }
+                const energyLevel = answerMap.get('PPTeB980IRSG') as number | undefined
+                const sleepQuality = answerMap.get('RndHdZQ2ENMg') as number | undefined
+                const sleepHoursAvg = answerMap.get('7cZDeEaVwh7B') as string | undefined
+                if (typeof energyLevel === 'number') checkInData.energy_level = energyLevel
+                if (typeof sleepQuality === 'number') checkInData.sleep_quality = sleepQuality
+                if (sleepHoursAvg) {
+                  const num = parseFloat(String(sleepHoursAvg))
+                  if (!isNaN(num)) checkInData.sleep_hours = num
+                }
+                await supabase.from('check_ins').insert(checkInData)
+                results.audit.initial_checkins_created++
+              }
+            } catch { /* non-critical */ }
           }
         }
       } catch (e) {
