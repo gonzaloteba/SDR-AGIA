@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { differenceInDays, startOfMonth, getWeekOfMonth } from 'date-fns'
 import { getAdminClient } from '@/lib/supabase/admin'
+import { logger } from '@/lib/logger'
+
+const log = logger('api:cron:generate-alerts')
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,7 +30,7 @@ export async function POST(request: NextRequest) {
       .eq('status', 'active')
 
     if (clientsError) {
-      console.error('Failed to fetch clients:', clientsError.message)
+      log.error('Failed to fetch clients', { error: clientsError.message })
       return NextResponse.json({ error: 'Failed to fetch clients' }, { status: 500 })
     }
 
@@ -42,7 +45,7 @@ export async function POST(request: NextRequest) {
       .eq('is_resolved', false)
 
     if (alertsError) {
-      console.error('Failed to fetch existing alerts:', alertsError.message)
+      log.error('Failed to fetch existing alerts', { error: alertsError.message })
     }
 
     const existingAlertSet = new Set(
@@ -60,7 +63,7 @@ export async function POST(request: NextRequest) {
       .order('submitted_at', { ascending: false })
 
     if (checkinsError) {
-      console.error('Failed to fetch check-ins:', checkinsError.message)
+      log.error('Failed to fetch check-ins', { error: checkinsError.message })
     }
 
     const lastCheckinByClient = new Map<string, string>()
@@ -77,7 +80,7 @@ export async function POST(request: NextRequest) {
       .gte('call_date', monthStart)
 
     if (callsError) {
-      console.error('Failed to fetch calls:', callsError.message)
+      log.error('Failed to fetch calls', { error: callsError.message })
     }
 
     const callCountByClient = new Map<string, number>()
@@ -92,7 +95,7 @@ export async function POST(request: NextRequest) {
       .gte('end_date', now.toISOString().split('T')[0])
 
     if (plansError) {
-      console.error('Failed to fetch training plans:', plansError.message)
+      log.error('Failed to fetch training plans', { error: plansError.message })
     }
 
     const activePlanByClient = new Map<string, string>()
@@ -107,7 +110,7 @@ export async function POST(request: NextRequest) {
 
         // Skip clients with invalid dates
         if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-          console.error(`Client ${client.id} has invalid dates: start=${client.start_date}, end=${client.end_date}`)
+          log.warn('Client has invalid dates', { clientId: client.id, start: client.start_date, end: client.end_date })
           continue
         }
 
@@ -231,7 +234,7 @@ export async function POST(request: NextRequest) {
           }
         }
       } catch (e) {
-        console.error(`Error processing alerts for client ${client.id}:`, e)
+        log.error('Error processing alerts for client', { clientId: client.id, error: (e as Error).message })
         continue
       }
     }
@@ -252,7 +255,7 @@ export async function POST(request: NextRequest) {
       alerts_created: alertsToCreate.length,
     })
   } catch (e) {
-    console.error('Alert generation failed:', e)
+    log.error('Alert generation failed', { error: (e as Error).message })
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

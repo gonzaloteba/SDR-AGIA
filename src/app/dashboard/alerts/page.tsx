@@ -15,7 +15,7 @@ export default async function AlertsPage() {
     .limit(100)
 
   if (error) {
-    console.error('Failed to fetch alerts:', error.message)
+    // Error logged via Error Boundary if thrown; fallback to empty list
   }
 
   return (

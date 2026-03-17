@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAdminClient } from '@/lib/supabase/admin'
 import { PHASE_DURATIONS_DAYS } from '@/lib/constants'
+import { phaseUpdateSchema } from '@/lib/validations'
+import { logger } from '@/lib/logger'
 import type { NutritionPhase } from '@/lib/types'
+
+const log = logger('api:phase')
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -20,17 +24,22 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: 'Client ID is required' }, { status: 400 })
     }
 
-    let body: Record<string, unknown>
+    let body: unknown
     try {
       body = await request.json()
     } catch {
       return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
     }
 
-    const { phase, custom_phase_duration_days } = body as {
-      phase?: NutritionPhase
-      custom_phase_duration_days?: number | null
+    const parsed = phaseUpdateSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: parsed.error.issues.map(e => e.message) },
+        { status: 400 }
+      )
     }
+
+    const { phase, custom_phase_duration_days } = parsed.data
 
     const supabase = getAdminClient()
 
@@ -83,7 +92,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
             .eq('id', id)
 
           if (dateError) {
-            console.error('Failed to set phase_change_date:', dateError.message)
+            log.error('Failed to set phase_change_date', { error: dateError.message, clientId: id })
           }
         }
       }
@@ -97,7 +106,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         .eq('is_resolved', false)
 
       if (alertError) {
-        console.error('Failed to resolve phase_change alerts:', alertError.message)
+        log.error('Failed to resolve phase_change alerts', { error: alertError.message, clientId: id })
       }
 
       return NextResponse.json({ success: true })
@@ -158,7 +167,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         .eq('is_resolved', false)
 
       if (alertError) {
-        console.error('Failed to resolve phase_change alerts:', alertError.message)
+        log.error('Failed to resolve phase_change alerts', { error: alertError.message, clientId: id })
       }
 
       return NextResponse.json({ success: true })
@@ -166,7 +175,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     return NextResponse.json({ error: 'No changes provided' }, { status: 400 })
   } catch (e) {
-    console.error('Phase update error:', e)
+    log.error('Phase update error', { error: (e as Error).message })
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

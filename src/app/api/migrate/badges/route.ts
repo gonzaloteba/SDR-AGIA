@@ -65,7 +65,8 @@ export async function POST(request: NextRequest) {
       sql,
     }, { status: 500 })
   } catch (e) {
-    console.error('Badge migration error:', e)
+    const { logger } = await import('@/lib/logger')
+    logger('api:migrate:badges').error('Badge migration error', { error: (e as Error).message })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

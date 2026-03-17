@@ -5,6 +5,7 @@ import { Phone, Plus, ChevronDown, ChevronUp, FileText, Video, ExternalLink, Cli
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { cn, inputClass, textareaClass } from '@/lib/utils'
+import { useToast } from '@/components/ui/toast'
 import { completeCoachActions as completeCoachActionsAction } from '@/app/dashboard/clients/[id]/actions'
 import type { Call } from '@/lib/types'
 
@@ -19,6 +20,7 @@ export function CallsLog({ calls, clientId }: CallsLogProps) {
   const [expandedCall, setExpandedCall] = useState<string | null>(null)
   const [completingAction, setCompletingAction] = useState<string | null>(null)
   const router = useRouter()
+  const { toast } = useToast()
 
   async function handleAddCall(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -41,7 +43,7 @@ export function CallsLog({ calls, clientId }: CallsLogProps) {
       })
 
       if (error) {
-        alert('Error al guardar la llamada. Inténtalo de nuevo.')
+        toast('Error al guardar la llamada. Inténtalo de nuevo.', 'error')
         return
       }
 

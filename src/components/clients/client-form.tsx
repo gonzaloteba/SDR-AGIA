@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { inputClass } from '@/lib/utils'
+import { clientFormSchema } from '@/lib/validations'
 import type { Client } from '@/lib/types'
 
 interface ClientFormProps {
@@ -22,40 +23,61 @@ export function ClientForm({ client }: ClientFormProps) {
     setError(null)
 
     const formData = new FormData(e.currentTarget)
-    const startDate = formData.get('start_date') as string
-    const planType = formData.get('plan_type') as string
-    const planMonths: Record<string, number> = {
-      '3_months': 3, '4_months': 4, '6_months': 6, '12_months': 12,
-    }
-    const months = planMonths[planType] || 3
-    const start = new Date(startDate)
-    const end = new Date(start)
-    end.setMonth(end.getMonth() + months)
-    const endDate = end.toISOString().split('T')[0]
 
-    const data = {
+    const rawData = {
       first_name: formData.get('first_name') as string,
       last_name: formData.get('last_name') as string,
       email: (formData.get('email') as string) || null,
       phone: (formData.get('phone') as string) || null,
       timezone: formData.get('timezone') as string,
-      start_date: startDate,
-      end_date: endDate,
-      renewal_date: endDate,
-      plan_type: planType,
+      start_date: formData.get('start_date') as string,
+      plan_type: formData.get('plan_type') as string,
       closer: (formData.get('closer') as string) || null,
       drive_folder_url: (formData.get('drive_folder_url') as string) || null,
       status: (formData.get('status') as string) || 'active',
       current_phase: parseInt(formData.get('current_phase') as string) || 1,
       birth_date: (formData.get('birth_date') as string) || null,
-      height_cm: parseInt(formData.get('height_cm') as string) || null,
-      initial_weight_kg: parseFloat(formData.get('initial_weight_kg') as string) || null,
-      initial_body_fat_pct: parseFloat(formData.get('initial_body_fat_pct') as string) || null,
+      height_cm: formData.get('height_cm') ? parseInt(formData.get('height_cm') as string) : null,
+      initial_weight_kg: formData.get('initial_weight_kg') ? parseFloat(formData.get('initial_weight_kg') as string) : null,
+      initial_body_fat_pct: formData.get('initial_body_fat_pct') ? parseFloat(formData.get('initial_body_fat_pct') as string) : null,
       location: (formData.get('location') as string) || null,
       training_level: (formData.get('training_level') as string) || null,
       motivation: (formData.get('motivation') as string) || null,
       medical_notes: (formData.get('medical_notes') as string) || null,
       goals: (formData.get('goals') as string) || null,
+    }
+
+    const parsed = clientFormSchema.safeParse(rawData)
+    if (!parsed.success) {
+      const firstError = parsed.error.issues[0]
+      setError(firstError.message)
+      setLoading(false)
+      return
+    }
+
+    const planMonths: Record<string, number> = {
+      '3_months': 3, '4_months': 4, '6_months': 6, '12_months': 12,
+    }
+    const months = planMonths[parsed.data.plan_type] || 3
+    const start = new Date(parsed.data.start_date)
+    const end = new Date(start)
+    end.setMonth(end.getMonth() + months)
+    const endDate = end.toISOString().split('T')[0]
+
+    const data = {
+      ...parsed.data,
+      email: parsed.data.email || null,
+      phone: parsed.data.phone || null,
+      closer: parsed.data.closer || null,
+      drive_folder_url: parsed.data.drive_folder_url || null,
+      birth_date: parsed.data.birth_date || null,
+      location: parsed.data.location || null,
+      training_level: parsed.data.training_level || null,
+      motivation: parsed.data.motivation || null,
+      medical_notes: parsed.data.medical_notes || null,
+      goals: parsed.data.goals || null,
+      end_date: endDate,
+      renewal_date: endDate,
     }
 
     const supabase = createClient()

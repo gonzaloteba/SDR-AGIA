@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { differenceInDays } from 'date-fns'
 import { cn, inputClass, textareaClass } from '@/lib/utils'
+import { useToast } from '@/components/ui/toast'
 import type { TrainingPlan } from '@/lib/types'
 
 interface TrainingPlanCardProps {
@@ -17,6 +18,7 @@ export function TrainingPlanCard({ plans, clientId }: TrainingPlanCardProps) {
   const [showForm, setShowForm] = useState(false)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
+  const { toast } = useToast()
 
   const currentPlan = plans.find(
     (p) => new Date(p.end_date) >= new Date()
@@ -42,7 +44,7 @@ export function TrainingPlanCard({ plans, clientId }: TrainingPlanCardProps) {
       })
 
       if (error) {
-        alert('Error al guardar el plan. Inténtalo de nuevo.')
+        toast('Error al guardar el plan. Inténtalo de nuevo.', 'error')
         return
       }
 

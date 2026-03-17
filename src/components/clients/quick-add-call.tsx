@@ -5,6 +5,7 @@ import { Plus, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { cn, inputClass, textareaClass } from '@/lib/utils'
+import { useToast } from '@/components/ui/toast'
 
 interface QuickAddCallProps {
   clientId: string
@@ -16,6 +17,7 @@ export function QuickAddCall({ clientId, callsThisMonth }: QuickAddCallProps) {
   const [loading, setLoading] = useState(false)
   const popoverRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
+  const { toast } = useToast()
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -46,7 +48,7 @@ export function QuickAddCall({ clientId, callsThisMonth }: QuickAddCallProps) {
       })
 
       if (error) {
-        alert('Error al registrar la llamada.')
+        toast('Error al registrar la llamada.', 'error')
         return
       }
 
@@ -73,7 +75,7 @@ export function QuickAddCall({ clientId, callsThisMonth }: QuickAddCallProps) {
       })
 
       if (error) {
-        alert('Error al registrar la llamada.')
+        toast('Error al registrar la llamada.', 'error')
         return
       }
 

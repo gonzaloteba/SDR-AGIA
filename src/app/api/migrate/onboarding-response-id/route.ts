@@ -54,7 +54,8 @@ export async function POST(request: NextRequest) {
       sql,
     }, { status: 500 })
   } catch (e) {
-    console.error('Onboarding migration error:', e)
+    const { logger } = await import('@/lib/logger')
+    logger('api:migrate:onboarding').error('Onboarding migration error', { error: (e as Error).message })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

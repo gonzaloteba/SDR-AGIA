@@ -23,7 +23,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, results })
   } catch (e) {
-    console.error('Fix photos error:', e)
+    const { logger } = await import('@/lib/logger')
+    logger('api:migrate:fix-photos').error('Fix photos error', { error: (e as Error).message })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

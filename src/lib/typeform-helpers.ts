@@ -1,4 +1,5 @@
 import type { AdminClient } from '@/lib/supabase/admin'
+import { logger } from '@/lib/logger'
 import {
   CHECKIN_FIELD_MAP,
   AUDIT_FIELD_MAP,
@@ -8,6 +9,8 @@ import {
   parseYesNoChoice,
   inferTimezone,
 } from '@/lib/typeform-mappings'
+
+const log = logger('typeform:helpers')
 
 /** Dynamic key-value record for building Supabase row data */
 type RowData = Record<string, unknown>
@@ -81,19 +84,32 @@ export async function findClientByName(
   const ln = lastName.trim()
 
   // 1. Try exact match (case-insensitive)
-  const { data: exact } = await supabase
+  const { data: exact, error: exactError } = await supabase
     .from('clients')
     .select('id')
     .ilike('first_name', fn)
     .ilike('last_name', ln)
     .limit(1)
     .single()
-  if (exact) return exact
+
+  if (exactError && exactError.code !== 'PGRST116') {
+    log.error('Exact name match query failed', { error: exactError.message, firstName: fn, lastName: ln })
+  }
+
+  if (exact) {
+    log.info('Client matched by exact name', { clientId: exact.id, firstName: fn, lastName: ln })
+    return exact
+  }
 
   // 2. Fetch all clients and do fuzzy matching
-  const { data: allClients } = await supabase
+  const { data: allClients, error: fetchError } = await supabase
     .from('clients')
     .select('id, first_name, last_name')
+
+  if (fetchError) {
+    log.error('Failed to fetch clients for fuzzy match', { error: fetchError.message })
+    return null
+  }
 
   if (!allClients || allClients.length === 0) return null
 
@@ -121,9 +137,18 @@ export async function findClientByName(
       cLn.split(/\s+/)[0] === lnFirstWord ||
       cLn === lnFirstWord
 
-    if (lnMatch) return { id: client.id }
+    if (lnMatch) {
+      log.info('Client matched by fuzzy name', {
+        clientId: client.id,
+        searchedName: `${fn} ${ln}`,
+        matchedName: `${client.first_name} ${client.last_name}`,
+        matchType: 'fuzzy',
+      })
+      return { id: client.id }
+    }
   }
 
+  log.warn('No client found for name', { firstName: fn, lastName: ln, totalClientsSearched: allClients.length })
   return null
 }
 
