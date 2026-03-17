@@ -46,7 +46,7 @@ export interface Client {
   event_name: string | null
   event_date: string | null
   training_days_per_week: number | null
-  sleep_hours_avg: number | null
+  sleep_hours_avg: string | null
   energy_level_initial: number | null
   stress_level_initial: number | null
   initial_photo_url: string | null
