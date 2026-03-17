@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { ClipboardCheck, Download, Camera, X, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Minus } from 'lucide-react'
+import { SafeImage } from '@/components/ui/safe-image'
 import type { CheckIn } from '@/lib/types'
 
 interface CheckinHistoryProps {
@@ -69,10 +70,11 @@ function PhotoGallery({ photos, date }: { photos: string[]; date: string }) {
               onClick={() => setLightboxIndex(i)}
               className="relative group rounded-lg overflow-hidden border hover:border-primary transition-colors"
             >
-              <img
+              <SafeImage
                 src={url}
                 alt={`Progreso ${date} - ${i + 1}`}
                 className="h-24 w-24 object-cover"
+                fallbackClassName="h-24 w-24"
               />
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
             </button>
@@ -87,10 +89,11 @@ function PhotoGallery({ photos, date }: { photos: string[]; date: string }) {
           onClick={() => setLightboxIndex(null)}
         >
           <div className="relative max-w-3xl max-h-[90vh] mx-4" onClick={(e) => e.stopPropagation()}>
-            <img
+            <SafeImage
               src={photos[lightboxIndex]}
               alt={`Progreso ${date} - ${lightboxIndex + 1}`}
               className="max-h-[85vh] rounded-lg object-contain"
+              fallbackClassName="h-64 w-64 rounded-lg"
             />
             <div className="absolute top-2 right-2 flex gap-2">
               <a
@@ -393,10 +396,11 @@ export function CheckinHistory({ checkIns }: CheckinHistoryProps) {
                   onClick={() => setGalleryIndex(i)}
                   className="block rounded-lg overflow-hidden border hover:border-primary transition-colors relative group"
                 >
-                  <img
+                  <SafeImage
                     src={photo.url}
                     alt={`Progreso ${i + 1}`}
                     className="h-32 w-32 object-cover"
+                    fallbackClassName="h-32 w-32"
                   />
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
                 </button>
@@ -450,10 +454,11 @@ export function CheckinHistory({ checkIns }: CheckinHistoryProps) {
                   <p className="text-white/70 text-xs mb-2">
                     Primera foto — {new Date(firstPhoto.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </p>
-                  <img
+                  <SafeImage
                     src={firstPhoto.url}
                     alt="Primera foto de progreso"
                     className="max-h-[75vh] rounded-lg object-contain w-full"
+                    fallbackClassName="h-64 w-full rounded-lg"
                   />
                 </div>
               )}
@@ -463,10 +468,11 @@ export function CheckinHistory({ checkIns }: CheckinHistoryProps) {
                   {isFirstPhoto ? 'Primera foto — ' : ''}
                   {new Date(selectedPhoto.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
                 </p>
-                <img
+                <SafeImage
                   src={selectedPhoto.url}
                   alt={`Progreso ${galleryIndex + 1}`}
                   className="max-h-[75vh] rounded-lg object-contain w-full"
+                  fallbackClassName="h-64 w-full rounded-lg"
                 />
               </div>
             </div>
