@@ -223,6 +223,17 @@ export async function POST(request: NextRequest) {
 }
 
 // ============================================
+// Date helpers
+// ============================================
+
+/** Calculate end date as start_date + N days (default 90 for 3-month program) */
+function calculateEndDate(startDate: string, days: number = 90): string {
+  const start = new Date(startDate + 'T12:00:00')
+  start.setDate(start.getDate() + days)
+  return start.toISOString().split('T')[0]
+}
+
+// ============================================
 // Check-In Handler
 // ============================================
 async function handleCheckIn(
@@ -273,10 +284,16 @@ async function createClientFromAudit(
   submittedAt: string,
   responseId?: string
 ): Promise<{ id: string }> {
+  const startDate = submittedAt.split('T')[0]
+  const endDate = calculateEndDate(startDate, 90)
+
   const clientData: Record<string, unknown> = {
     first_name: firstName.trim(),
     last_name: lastName.trim(),
-    start_date: submittedAt.split('T')[0],
+    start_date: startDate,
+    end_date: endDate,
+    renewal_date: endDate,
+    plan_type: '3_months',
     onboarding_submitted_at: submittedAt,
     coach_id: process.env.DEFAULT_COACH_ID || null,
   }
@@ -311,6 +328,19 @@ async function handleAudit(
   if (responseId) updateData.onboarding_response_id = responseId
 
   mapAuditFields(answerMap, updateData)
+
+  // Backfill end_date/renewal_date if missing
+  const { data: existing } = await supabase
+    .from('clients')
+    .select('start_date, end_date, renewal_date')
+    .eq('id', clientId)
+    .single()
+  if (existing && !existing.end_date) {
+    const sd = existing.start_date || submittedAt.split('T')[0]
+    const ed = calculateEndDate(sd, 90)
+    updateData.end_date = ed
+    updateData.renewal_date = existing.renewal_date || ed
+  }
 
   const { error: updateError } = await supabase
     .from('clients')

@@ -139,7 +139,7 @@ export function ClientDetailHeader({ client, alertCount }: ClientDetailHeaderPro
                 </button>
               )}
               <span>
-                Inicio: {new Date(client.start_date).toLocaleDateString('es-ES')}
+                Inicio: {new Date(client.start_date + 'T12:00:00').toLocaleDateString('es-ES')}
               </span>
               {client.timezone && <span>{client.timezone}</span>}
             </div>
@@ -185,11 +185,13 @@ export function ClientDetailHeader({ client, alertCount }: ClientDetailHeaderPro
               Closer: <span className="text-foreground">{client.closer}</span>
             </span>
           )}
-          <span className="text-muted-foreground">
-            Renovación: <span className="text-foreground">
-              {new Date(client.renewal_date).toLocaleDateString('es-ES')}
+          {client.renewal_date && (
+            <span className="text-muted-foreground">
+              Renovación: <span className="text-foreground">
+                {new Date(client.renewal_date + 'T12:00:00').toLocaleDateString('es-ES')}
+              </span>
             </span>
-          </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <button

@@ -23,6 +23,7 @@ export interface TypeformAnswer {
   file_url?: string
   url?: string
   phone_number?: string
+  date?: string
   [key: string]: unknown
 }
 
@@ -49,6 +50,8 @@ export function extractValue(answer: TypeformAnswer): unknown {
       return answer.url
     case 'phone_number':
       return answer.phone_number
+    case 'date':
+      return answer.date ? answer.date.split('T')[0] : answer.date
     default:
       return answer[answer.type]
   }
@@ -155,6 +158,31 @@ export function mapAuditFields(answerMap: Map<string, unknown>, data: RowData) {
         break
       case 'initial_photo_url':
         if (typeof value === 'string' && value) data[column] = value
+        break
+      case 'birth_date':
+        // Typeform date fields come as ISO strings; store as YYYY-MM-DD
+        if (typeof value === 'string' && value) {
+          data[column] = value.split('T')[0]
+        }
+        break
+      case 'height_cm':
+      case 'initial_weight_kg':
+      case 'initial_body_fat_pct':
+      case 'stress_level_initial': {
+        const numVal = typeof value === 'number' ? value : parseFloat(String(value))
+        if (!isNaN(numVal)) data[column] = numVal
+        break
+      }
+      case 'diagnosis':
+        // May come as boolean ("Sí"/"No") or text
+        if (typeof value === 'boolean') {
+          data[column] = value ? 'TRUE' : 'FALSE'
+        } else if (typeof value === 'string') {
+          const lower = value.toLowerCase()
+          if (lower === 'sí' || lower === 'si') data[column] = 'TRUE'
+          else if (lower === 'no') data[column] = 'FALSE'
+          else data[column] = value
+        }
         break
       default:
         data[column] = value

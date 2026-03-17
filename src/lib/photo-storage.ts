@@ -1,6 +1,19 @@
 import type { AdminClient } from '@/lib/supabase/admin'
 
 /**
+ * Build fetch headers for downloading a photo URL.
+ * Typeform file URLs require Bearer token authentication.
+ */
+function buildPhotoFetchHeaders(url: string): Record<string, string> {
+  const headers: Record<string, string> = {}
+  const typeformToken = process.env.TYPEFORM_API_TOKEN
+  if (typeformToken && url.includes('typeform')) {
+    headers['Authorization'] = `Bearer ${typeformToken}`
+  }
+  return headers
+}
+
+/**
  * Download a photo from a temporary URL (e.g. Typeform) and upload it
  * to Supabase Storage for permanent access.
  *
@@ -14,8 +27,10 @@ export async function persistPhoto(
   prefix: string = 'photo'
 ): Promise<string> {
   try {
-    // Download the image from the temporary URL
-    const response = await fetch(tempUrl)
+    // Download the image from the temporary URL (with auth for Typeform)
+    const response = await fetch(tempUrl, {
+      headers: buildPhotoFetchHeaders(tempUrl),
+    })
     if (!response.ok) return tempUrl
 
     const blob = await response.blob()
