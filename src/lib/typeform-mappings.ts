@@ -127,3 +127,36 @@ export function parseSleepHours(value: string): string {
 export function parseYesNoChoice(value: string): boolean {
   return value.toLowerCase() === 'si' || value.toLowerCase() === 'sí'
 }
+
+/** Infer IANA timezone from free-text location */
+export function inferTimezone(location: string): string | null {
+  const l = location.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  const map: [RegExp, string][] = [
+    [/lima|peru/, 'America/Lima'],
+    [/bogota|colombia|medellin|cali|barranquilla/, 'America/Bogota'],
+    [/buenos aires|argentina/, 'America/Argentina/Buenos_Aires'],
+    [/santiago|chile/, 'America/Santiago'],
+    [/montevideo|uruguay/, 'America/Montevideo'],
+    [/quito|ecuador|guayaquil/, 'America/Guayaquil'],
+    [/caracas|venezuela/, 'America/Caracas'],
+    [/mexico|cdmx|guadalajara|monterrey/, 'America/Mexico_City'],
+    [/madrid|barcelona|espana|spain|sevilla|valencia/, 'Europe/Madrid'],
+    [/miami|new york|estados unidos|usa|united states/, 'America/New_York'],
+    [/los angeles|california/, 'America/Los_Angeles'],
+    [/panama/, 'America/Panama'],
+    [/costa rica|san jose/, 'America/Costa_Rica'],
+    [/la paz|bolivia/, 'America/La_Paz'],
+    [/asuncion|paraguay/, 'America/Asuncion'],
+    [/santo domingo|dominicana/, 'America/Santo_Domingo'],
+    [/guatemala/, 'America/Guatemala'],
+    [/honduras|tegucigalpa/, 'America/Tegucigalpa'],
+    [/el salvador|san salvador/, 'America/El_Salvador'],
+    [/managua|nicaragua/, 'America/Managua'],
+    [/la habana|cuba/, 'America/Havana'],
+    [/puerto rico/, 'America/Puerto_Rico'],
+  ]
+  for (const [regex, tz] of map) {
+    if (regex.test(l)) return tz
+  }
+  return null
+}

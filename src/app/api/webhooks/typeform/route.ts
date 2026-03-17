@@ -363,8 +363,8 @@ async function createInitialCheckIn(
   // Map audit fields to check-in fields
   const photoUrl = answerMap.get('1BGJgXqDAcqc') as string | undefined // initial_photo_url
   const energyLevel = answerMap.get('PPTeB980IRSG') as number | undefined // energy_level_initial
-  const sleepQuality = answerMap.get('x02zDXgVRaQ4') as number | undefined // sleep_quality_initial
-  const sleepHoursAvg = answerMap.get('OG5Q3AEuSwx5') as string | undefined // sleep_hours_avg
+  const sleepQuality = answerMap.get('RndHdZQ2ENMg') as number | undefined // sleep_quality_initial
+  const sleepHoursAvg = answerMap.get('7cZDeEaVwh7B') as string | undefined // sleep_hours_avg
 
   // Persist photo to storage if present
   let photoUrls: string[] | null = null

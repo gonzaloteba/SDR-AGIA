@@ -6,6 +6,7 @@ import {
   ratingToTen,
   parseSleepHours,
   parseYesNoChoice,
+  inferTimezone,
 } from '@/lib/typeform-mappings'
 
 /** Dynamic key-value record for building Supabase row data */
@@ -182,6 +183,14 @@ export function mapAuditFields(answerMap: Map<string, unknown>, data: RowData) {
           if (lower === 'sí' || lower === 'si') data[column] = 'TRUE'
           else if (lower === 'no') data[column] = 'FALSE'
           else data[column] = value
+        }
+        break
+      case 'location':
+        data[column] = value
+        // Infer timezone from location text
+        if (typeof value === 'string') {
+          const tz = inferTimezone(value)
+          if (tz) data.timezone = tz
         }
         break
       default:
