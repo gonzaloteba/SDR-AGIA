@@ -70,6 +70,7 @@ CREATE TABLE IF NOT EXISTS clients (
   sleep_quality_initial INTEGER,
   wakes_at_night BOOLEAN,
   feels_rested BOOLEAN,
+  occupation TEXT,
   work_schedule TEXT,
   work_modality TEXT,
   work_activity_level TEXT,

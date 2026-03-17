@@ -230,10 +230,11 @@ export function ClientProfileSummary({ client }: ClientProfileSummaryProps) {
           )}
 
           {/* Trabajo */}
-          {(client.work_schedule || client.work_modality || client.work_activity_level) && (
+          {(client.occupation || client.work_schedule || client.work_modality || client.work_activity_level) && (
             <>
               <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2 mt-4">Trabajo</p>
               <div className="grid gap-1">
+                <InfoRow icon={Briefcase} label="Ocupación" value={client.occupation} />
                 <InfoRow icon={Briefcase} label="Horarios" value={client.work_schedule} />
                 <InfoRow icon={Briefcase} label="Modalidad" value={client.work_modality} />
                 <InfoRow icon={Briefcase} label="Nivel de actividad" value={client.work_activity_level} />

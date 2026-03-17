@@ -55,6 +55,7 @@ export interface Client {
   sleep_quality_initial: number | null
   wakes_at_night: boolean | null
   feels_rested: boolean | null
+  occupation: string | null
   work_schedule: string | null
   work_modality: string | null
   work_activity_level: string | null

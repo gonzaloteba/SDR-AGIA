@@ -50,19 +50,25 @@ export const AUDIT_LAST_NAME_REF = 'dnzUUrbR3JVS'
 
 // Field ref → clients column mapping
 export const AUDIT_FIELD_MAP: Record<string, string> = {
-  // Contact
+  // Datos personales
   'RMR9kpDvd7vV': 'phone',
-  // Sueño
-  '7Y3pIkquwvRJ': 'wake_time',
-  'V99wnpCMVzsg': 'bed_time',
-  'OG5Q3AEuSwx5': 'sleep_hours_avg',
-  'x02zDXgVRaQ4': 'sleep_quality_initial',
-  'JImnauh5621y': 'wakes_at_night',
-  'TfNTnZsqPGCy': 'feels_rested',
+  '9g73SStTdLDo': 'email',
+  'IWDqcgtfz5T0': 'birth_date',
+  '7aawMA8puX6z': 'location',
+  '4o0iFaaEluKG': 'height_cm',
+  'eYWMW1Gcpn9a': 'initial_weight_kg',
   // Trabajo
+  'V99wnpCMVzsg': 'occupation',
   'ZZQc4LwuAJUe': 'work_schedule',
   'FALZFy42ixAK': 'work_modality',
   'pkAk345ecQb7': 'work_activity_level',
+  // Sueño
+  'qjpKWLKozFoF': 'wake_time',
+  '2bwoY0dWlcTk': 'bed_time',
+  '7cZDeEaVwh7B': 'sleep_hours_avg',
+  'RndHdZQ2ENMg': 'sleep_quality_initial',
+  'eGHFZoOH76tY': 'wakes_at_night',
+  'KFsbPuTelnms': 'feels_rested',
   // Entrenamiento
   'uwAyyPRPU0B2': 'has_event',
   'IhSv0XBjza25': 'event_name',
@@ -75,7 +81,7 @@ export const AUDIT_FIELD_MAP: Record<string, string> = {
   'jKdo6np8SchI': 'training_notes',
   // Alimentación
   '8qOK4Ho304hd': 'meals_per_day',
-  'X1eJ2GBOHozf': 'first_meal_time',
+  'X1eJ2GBOHoza': 'first_meal_time',
   'ysz7RUqtr3nH': 'dinner_time',
   'J8mUk1SFA5ht': 'night_hunger',
   '4fpG0rkdUdwR': 'coffee_intake',
