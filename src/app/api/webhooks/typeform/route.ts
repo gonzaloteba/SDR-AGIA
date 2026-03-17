@@ -113,27 +113,51 @@ export async function POST(request: NextRequest) {
     let action: string
 
     if (formId === AUDIT_FORM_ID) {
+      // Check for duplicate audit response
+      if (responseId) {
+        const { data: existing } = await supabase
+          .from('clients')
+          .select('id')
+          .eq('onboarding_response_id', responseId)
+          .limit(1)
+          .single()
+        if (existing) {
+          return NextResponse.json({
+            success: true,
+            action: 'duplicate_skipped',
+            client_id: existing.id,
+          })
+        }
+      }
+
       if (!client) {
-        client = await createClientFromAudit(supabase, firstName, lastName, answerMap, submittedAt)
+        client = await createClientFromAudit(supabase, firstName, lastName, answerMap, submittedAt, responseId)
         action = 'client_created'
       } else {
-        await handleAudit(supabase, client.id, answerMap, submittedAt)
+        await handleAudit(supabase, client.id, answerMap, submittedAt, responseId)
         action = 'client_updated'
       }
 
-      // Persist the initial photo to Supabase Storage (replace temp URL)
-      const photoUrl = answerMap.get('1BGJgXqDAcqc') as string | undefined
-      if (photoUrl && client) {
-        const permanentUrl = await persistPhoto(supabase, photoUrl, client.id, 'initial')
-        // Update the client record with the permanent URL
-        await supabase
-          .from('clients')
-          .update({ initial_photo_url: permanentUrl })
-          .eq('id', client.id)
+      // Persist the initial photo (non-fatal: client is already created)
+      try {
+        const photoUrl = answerMap.get('1BGJgXqDAcqc') as string | undefined
+        if (photoUrl && client) {
+          const permanentUrl = await persistPhoto(supabase, photoUrl, client.id, 'initial')
+          await supabase
+            .from('clients')
+            .update({ initial_photo_url: permanentUrl })
+            .eq('id', client.id)
+        }
+      } catch {
+        // Photo persistence is non-critical — client was already created
       }
 
-      // Create an initial check-in from the audit data
-      await createInitialCheckIn(supabase, client.id, answerMap, submittedAt, responseId)
+      // Create an initial check-in from the audit data (non-fatal)
+      try {
+        await createInitialCheckIn(supabase, client.id, answerMap, submittedAt, responseId)
+      } catch {
+        // Initial check-in is non-critical — client was already created
+      }
 
     } else if (formId === CHECKIN_FORM_ID) {
       if (!client) {
@@ -218,7 +242,8 @@ async function createClientFromAudit(
   firstName: string,
   lastName: string,
   answerMap: Map<string, unknown>,
-  submittedAt: string
+  submittedAt: string,
+  responseId?: string
 ): Promise<{ id: string }> {
   const clientData: Record<string, unknown> = {
     first_name: firstName.trim(),
@@ -227,6 +252,7 @@ async function createClientFromAudit(
     onboarding_submitted_at: submittedAt,
     coach_id: process.env.DEFAULT_COACH_ID || null,
   }
+  if (responseId) clientData.onboarding_response_id = responseId
 
   mapAuditFields(answerMap, clientData)
 
@@ -248,11 +274,13 @@ async function handleAudit(
   supabase: AdminClient,
   clientId: string,
   answerMap: Map<string, unknown>,
-  submittedAt: string
+  submittedAt: string,
+  responseId?: string
 ) {
   const updateData: Record<string, unknown> = {
     onboarding_submitted_at: submittedAt,
   }
+  if (responseId) updateData.onboarding_response_id = responseId
 
   mapAuditFields(answerMap, updateData)
 

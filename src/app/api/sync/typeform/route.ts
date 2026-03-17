@@ -107,6 +107,8 @@ export async function POST(request: NextRequest) {
             last_name: lastName.trim(),
             start_date: (submittedAt || new Date().toISOString()).split('T')[0],
             onboarding_submitted_at: submittedAt,
+            onboarding_response_id: response.token,
+            coach_id: process.env.DEFAULT_COACH_ID || null,
           }
           mapAuditFields(answerMap, clientData)
 
@@ -117,7 +119,7 @@ export async function POST(request: NextRequest) {
             results.audit.created++
           }
         } else {
-          const updateData: Record<string, unknown> = { onboarding_submitted_at: submittedAt }
+          const updateData: Record<string, unknown> = { onboarding_submitted_at: submittedAt, onboarding_response_id: response.token }
           mapAuditFields(answerMap, updateData)
 
           const { error } = await supabase.from('clients').update(updateData).eq('id', client.id)

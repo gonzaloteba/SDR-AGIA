@@ -134,11 +134,9 @@ export function mapAuditFields(answerMap: Map<string, unknown>, data: RowData) {
     if (value === undefined || value === null) continue
 
     switch (column) {
-      case 'sleep_hours_avg': {
-        const num = parseFloat(String(value))
-        data[column] = isNaN(num) ? null : num
+      case 'sleep_hours_avg':
+        data[column] = typeof value === 'string' ? parseSleepHours(value) : String(value)
         break
-      }
       case 'training_days_per_week': {
         const num = parseInt(String(value), 10)
         data[column] = isNaN(num) ? null : num
@@ -149,7 +147,7 @@ export function mapAuditFields(answerMap: Map<string, unknown>, data: RowData) {
       case 'feels_rested':
       case 'night_hunger':
       case 'trains_fasted':
-        data[column] = typeof value === 'boolean' ? value : true
+        data[column] = typeof value === 'boolean' ? value : parseYesNoChoice(String(value))
         break
       case 'sleep_quality_initial':
       case 'energy_level_initial':
