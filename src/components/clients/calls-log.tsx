@@ -23,25 +23,35 @@ export function CallsLog({ calls, clientId }: CallsLogProps) {
   async function handleAddCall(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setLoading(true)
-    const formData = new FormData(e.currentTarget)
 
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    try {
+      const formData = new FormData(e.currentTarget)
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
 
-    await supabase.from('calls').insert({
-      client_id: clientId,
-      coach_id: user?.id || null,
-      call_date: formData.get('call_date') as string,
-      duration_minutes: parseInt(formData.get('duration') as string) || 15,
-      notes: (formData.get('notes') as string) || null,
-      transcript: (formData.get('transcript') as string) || null,
-      meet_link: (formData.get('meet_link') as string) || null,
-      coach_actions: (formData.get('coach_actions') as string) || null,
-    })
+      const { error } = await supabase.from('calls').insert({
+        client_id: clientId,
+        coach_id: user?.id || null,
+        call_date: formData.get('call_date') as string,
+        duration_minutes: parseInt(formData.get('duration') as string) || 15,
+        notes: (formData.get('notes') as string) || null,
+        transcript: (formData.get('transcript') as string) || null,
+        meet_link: (formData.get('meet_link') as string) || null,
+        coach_actions: (formData.get('coach_actions') as string) || null,
+      })
 
-    setShowForm(false)
-    setLoading(false)
-    router.refresh()
+      if (error) {
+        alert('Error al guardar la llamada. Inténtalo de nuevo.')
+        return
+      }
+
+      setShowForm(false)
+      router.refresh()
+    } catch {
+      alert('Error al guardar la llamada. Inténtalo de nuevo.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function handleCompleteActions(callId: string) {

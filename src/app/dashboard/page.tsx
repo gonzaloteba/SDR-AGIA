@@ -26,29 +26,31 @@ export default async function DashboardPage() {
     allClientsQuery.eq('coach_id', coach.id)
   }
 
-  const [
-    { data: clients },
-    { data: checkinsThisWeek },
-    { data: callsThisMonth },
-    { data: pendingAlerts },
-    { data: allClients },
-  ] = await Promise.all([
-    clientsQuery,
-    supabase
+  const safe = <T,>(promise: PromiseLike<{ data: T | null; error: unknown }>): Promise<{ data: T | null }> =>
+    Promise.resolve(promise).then(r => ({ data: r.data })).catch(() => ({ data: null }))
+
+  const [clientsResult, checkinsResult, callsResult, alertsResult, allClientsResult] = await Promise.all([
+    safe(clientsQuery),
+    safe(supabase
       .from('check_ins')
       .select('client_id')
       .gte('submitted_at', weekStart)
-      .lte('submitted_at', weekEnd),
-    supabase
+      .lte('submitted_at', weekEnd)),
+    safe(supabase
       .from('calls')
       .select('client_id')
-      .gte('call_date', monthStart),
-    supabase
+      .gte('call_date', monthStart)),
+    safe(supabase
       .from('alerts')
       .select('id, client_id')
-      .eq('is_resolved', false),
-    allClientsQuery,
+      .eq('is_resolved', false)),
+    safe(allClientsQuery),
   ])
+
+  const clients = clientsResult.data
+  const checkinsThisWeek = checkinsResult.data
+  const pendingAlerts = alertsResult.data
+  const allClients = allClientsResult.data
 
   const activeClients = clients || []
   const checkinClientIds = new Set((checkinsThisWeek || []).map((c) => c.client_id))
@@ -64,8 +66,10 @@ export default async function DashboardPage() {
     if (alertClientIds.has(client.id)) red++
     else green++
 
-    phaseDistribution[client.current_phase as NutritionPhase] =
-      (phaseDistribution[client.current_phase as NutritionPhase] || 0) + 1
+    const phase = client.current_phase as NutritionPhase
+    if (phase >= 1 && phase <= 3) {
+      phaseDistribution[phase] = (phaseDistribution[phase] || 0) + 1
+    }
   }
 
   // Retention rate

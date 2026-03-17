@@ -34,19 +34,29 @@ export function QuickAddCall({ clientId, callsThisMonth }: QuickAddCallProps) {
     e.stopPropagation()
     setLoading(true)
 
-    const formData = new FormData(e.currentTarget)
-    const supabase = createClient()
+    try {
+      const formData = new FormData(e.currentTarget)
+      const supabase = createClient()
 
-    await supabase.from('calls').insert({
-      client_id: clientId,
-      call_date: formData.get('call_date') as string,
-      duration_minutes: parseInt(formData.get('duration') as string) || 15,
-      notes: (formData.get('notes') as string) || null,
-    })
+      const { error } = await supabase.from('calls').insert({
+        client_id: clientId,
+        call_date: formData.get('call_date') as string,
+        duration_minutes: parseInt(formData.get('duration') as string) || 15,
+        notes: (formData.get('notes') as string) || null,
+      })
 
-    setLoading(false)
-    setOpen(false)
-    router.refresh()
+      if (error) {
+        alert('Error al registrar la llamada.')
+        return
+      }
+
+      setOpen(false)
+      router.refresh()
+    } catch {
+      alert('Error al registrar la llamada.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function handleInstantAdd(e: React.MouseEvent) {
@@ -54,15 +64,25 @@ export function QuickAddCall({ clientId, callsThisMonth }: QuickAddCallProps) {
     e.stopPropagation()
     setLoading(true)
 
-    const supabase = createClient()
-    await supabase.from('calls').insert({
-      client_id: clientId,
-      call_date: new Date().toISOString().split('T')[0],
-      duration_minutes: 15,
-    })
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.from('calls').insert({
+        client_id: clientId,
+        call_date: new Date().toISOString().split('T')[0],
+        duration_minutes: 15,
+      })
 
-    setLoading(false)
-    router.refresh()
+      if (error) {
+        alert('Error al registrar la llamada.')
+        return
+      }
+
+      router.refresh()
+    } catch {
+      alert('Error al registrar la llamada.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (

@@ -16,20 +16,31 @@ export default function LoginPage() {
     setLoading(true)
     setError(null)
 
-    const supabase = createClient()
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
 
-    if (error) {
-      setError('Credenciales inválidas. Intenta de nuevo.')
+      if (error) {
+        if (error.message.includes('Invalid login')) {
+          setError('Credenciales inválidas. Intenta de nuevo.')
+        } else if (error.message.includes('Email not confirmed')) {
+          setError('Tu email no ha sido confirmado.')
+        } else {
+          setError('Error al iniciar sesión. Intenta de nuevo.')
+        }
+        setLoading(false)
+        return
+      }
+
+      router.push('/dashboard')
+      router.refresh()
+    } catch {
+      setError('Error de conexión. Comprueba tu internet e intenta de nuevo.')
       setLoading(false)
-      return
     }
-
-    router.push('/dashboard')
-    router.refresh()
   }
 
   return (

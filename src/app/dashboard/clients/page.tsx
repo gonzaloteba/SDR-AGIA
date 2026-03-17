@@ -17,6 +17,9 @@ export default async function ClientsPage() {
     clientsQuery.eq('coach_id', coach.id)
   }
 
+  const safe = <T,>(promise: PromiseLike<{ data: T | null; error: unknown }>): Promise<{ data: T | null }> =>
+    Promise.resolve(promise).then(r => ({ data: r.data })).catch(() => ({ data: null }))
+
   const [
     { data: clients },
     { data: latestCheckins },
@@ -24,24 +27,24 @@ export default async function ClientsPage() {
     { data: unresolvedAlerts },
     { data: pendingCoachActions },
   ] = await Promise.all([
-    clientsQuery,
-    supabase
+    safe(clientsQuery),
+    safe(supabase
       .from('check_ins')
       .select('client_id, submitted_at')
-      .order('submitted_at', { ascending: false }),
-    supabase
+      .order('submitted_at', { ascending: false })),
+    safe(supabase
       .from('calls')
       .select('client_id')
-      .gte('call_date', monthStart),
-    supabase
+      .gte('call_date', monthStart)),
+    safe(supabase
       .from('alerts')
       .select('client_id')
-      .eq('is_resolved', false),
-    supabase
+      .eq('is_resolved', false)),
+    safe(supabase
       .from('calls')
       .select('client_id')
       .not('coach_actions', 'is', null)
-      .eq('coach_actions_completed', false),
+      .eq('coach_actions_completed', false)),
   ])
 
   // Build lookup maps

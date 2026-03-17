@@ -23,8 +23,12 @@ export function Sidebar() {
   const router = useRouter()
 
   async function handleLogout() {
-    const supabase = createClient()
-    await supabase.auth.signOut()
+    try {
+      const supabase = createClient()
+      await supabase.auth.signOut()
+    } catch {
+      // Sign out failed, but still redirect to login
+    }
     router.push('/login')
     router.refresh()
   }

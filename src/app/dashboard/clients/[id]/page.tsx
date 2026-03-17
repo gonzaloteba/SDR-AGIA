@@ -16,38 +16,47 @@ export default async function ClientDetailPage({ params }: Props) {
   const { id } = await params
   const supabase = await createClient()
 
+  // Fetch client first - if not found, show 404
+  const { data: client, error: clientError } = await supabase
+    .from('clients')
+    .select('*')
+    .eq('id', id)
+    .single()
+
+  if (clientError || !client) notFound()
+
+  // Fetch related data with safe fallbacks - these are non-critical
+  const safe = <T,>(promise: PromiseLike<{ data: T | null; error: unknown }>): Promise<{ data: T | null }> =>
+    Promise.resolve(promise).then(r => ({ data: r.data })).catch(() => ({ data: null }))
+
   const [
-    { data: client },
     { data: checkIns },
     { data: calls },
     { data: trainingPlans },
     { data: alerts },
   ] = await Promise.all([
-    supabase.from('clients').select('*').eq('id', id).single(),
-    supabase
+    safe(supabase
       .from('check_ins')
       .select('*')
       .eq('client_id', id)
-      .order('submitted_at', { ascending: false }),
-    supabase
+      .order('submitted_at', { ascending: false })),
+    safe(supabase
       .from('calls')
       .select('*')
       .eq('client_id', id)
-      .order('call_date', { ascending: false }),
-    supabase
+      .order('call_date', { ascending: false })),
+    safe(supabase
       .from('training_plans')
       .select('*')
       .eq('client_id', id)
-      .order('start_date', { ascending: false }),
-    supabase
+      .order('start_date', { ascending: false })),
+    safe(supabase
       .from('alerts')
       .select('*')
       .eq('client_id', id)
       .eq('is_resolved', false)
-      .order('created_at', { ascending: false }),
+      .order('created_at', { ascending: false })),
   ])
-
-  if (!client) notFound()
 
   return (
     <div>

@@ -6,5 +6,22 @@ export function calculateHealthScore(unresolvedAlertCount: number): HealthScore 
 }
 
 export function getDaysRemaining(endDate: string): number {
-  return Math.max(0, differenceInDays(new Date(endDate), new Date()))
+  try {
+    const parsed = new Date(endDate)
+    if (isNaN(parsed.getTime())) return 0
+    return Math.max(0, differenceInDays(parsed, new Date()))
+  } catch {
+    return 0
+  }
+}
+
+/** Safely parse a date string, returning null if invalid */
+export function safeParseDate(dateStr: string | null | undefined): Date | null {
+  if (!dateStr) return null
+  try {
+    const parsed = new Date(dateStr)
+    return isNaN(parsed.getTime()) ? null : parsed
+  } catch {
+    return null
+  }
 }

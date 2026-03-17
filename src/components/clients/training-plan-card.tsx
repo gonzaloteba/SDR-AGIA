@@ -28,20 +28,31 @@ export function TrainingPlanCard({ plans, clientId }: TrainingPlanCardProps) {
   async function handleAddPlan(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setLoading(true)
-    const formData = new FormData(e.currentTarget)
 
-    const supabase = createClient()
-    await supabase.from('training_plans').insert({
-      client_id: clientId,
-      start_date: formData.get('start_date') as string,
-      end_date: formData.get('end_date') as string,
-      plan_name: (formData.get('plan_name') as string) || null,
-      notes: (formData.get('notes') as string) || null,
-    })
+    try {
+      const formData = new FormData(e.currentTarget)
+      const supabase = createClient()
 
-    setShowForm(false)
-    setLoading(false)
-    router.refresh()
+      const { error } = await supabase.from('training_plans').insert({
+        client_id: clientId,
+        start_date: formData.get('start_date') as string,
+        end_date: formData.get('end_date') as string,
+        plan_name: (formData.get('plan_name') as string) || null,
+        notes: (formData.get('notes') as string) || null,
+      })
+
+      if (error) {
+        alert('Error al guardar el plan. Inténtalo de nuevo.')
+        return
+      }
+
+      setShowForm(false)
+      router.refresh()
+    } catch {
+      alert('Error al guardar el plan. Inténtalo de nuevo.')
+    } finally {
+      setLoading(false)
+    }
   }
 
 

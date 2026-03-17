@@ -6,23 +6,28 @@ import type { Coach } from '@/lib/types'
  * Returns the coach record (id, full_name, role) or null if not found.
  */
 export async function getCurrentCoach(): Promise<Coach | null> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  try {
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
 
-  if (!user) return null
+    if (authError || !user) return null
 
-  const { data: coach } = await supabase
-    .from('coaches')
-    .select('*')
-    .eq('id', user.id)
-    .single()
+    const { data: coach, error: queryError } = await supabase
+      .from('coaches')
+      .select('*')
+      .eq('id', user.id)
+      .single()
 
-  return coach
+    if (queryError || !coach) return null
+
+    return coach
+  } catch {
+    return null
+  }
 }
 
 /**
- * Build a Supabase query filter that restricts by coach_id.
- * Admins see all clients; coaches only see their own.
+ * Check if a coach has admin role.
  */
 export function isAdmin(coach: Coach): boolean {
   return coach.role === 'admin'
