@@ -15,6 +15,7 @@ import {
   buildCheckInData,
   type TypeformAnswer,
 } from '@/lib/typeform-helpers'
+import { persistPhoto, persistPhotos } from '@/lib/photo-storage'
 
 const TYPEFORM_API_BASE = 'https://api.typeform.com'
 
@@ -124,11 +125,19 @@ export async function POST(request: NextRequest) {
           }
           mapAuditFields(answerMap, clientData)
 
-          const { error } = await supabase.from('clients').insert(clientData)
-          if (error) {
-            results.audit.errors.push(`Create ${firstName} ${lastName}: ${error.message}`)
+          const { data: newClient, error } = await supabase.from('clients').insert(clientData).select('id').single()
+          if (error || !newClient) {
+            results.audit.errors.push(`Create ${firstName} ${lastName}: ${error?.message}`)
           } else {
             results.audit.created++
+            // Persist initial photo
+            try {
+              const photoUrl = answerMap.get('1BGJgXqDAcqc') as string | undefined
+              if (photoUrl) {
+                const permanentUrl = await persistPhoto(supabase, photoUrl, newClient.id, 'initial')
+                await supabase.from('clients').update({ initial_photo_url: permanentUrl }).eq('id', newClient.id)
+              }
+            } catch { /* non-critical */ }
           }
         } else {
           const updateData: Record<string, unknown> = { onboarding_submitted_at: submittedAt, onboarding_response_id: response.token }
@@ -147,6 +156,15 @@ export async function POST(request: NextRequest) {
             updateData.renewal_date = existing.renewal_date || ed
             if (!updateData.plan_type) updateData.plan_type = '3_months'
           }
+
+          // Persist initial photo
+          try {
+            const photoUrl = answerMap.get('1BGJgXqDAcqc') as string | undefined
+            if (photoUrl) {
+              const permanentUrl = await persistPhoto(supabase, photoUrl, client.id, 'initial')
+              updateData.initial_photo_url = permanentUrl
+            }
+          } catch { /* non-critical */ }
 
           const { error } = await supabase.from('clients').update(updateData).eq('id', client.id)
           if (error) {
@@ -220,6 +238,13 @@ export async function POST(request: NextRequest) {
         }
 
         const checkInData = buildCheckInData(answerMap, client.id, submittedAt, responseId)
+
+        // Persist check-in photos
+        try {
+          if (checkInData.photo_urls && Array.isArray(checkInData.photo_urls) && checkInData.photo_urls.length > 0) {
+            checkInData.photo_urls = await persistPhotos(supabase, checkInData.photo_urls, client.id, 'checkin')
+          }
+        } catch { /* non-critical */ }
 
         const { error } = await supabase.from('check_ins').insert(checkInData)
         if (error) {
