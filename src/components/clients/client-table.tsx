@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Search, Plus, ClipboardList } from 'lucide-react'
+import { Search, Plus, ClipboardList, Cake } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PHASE_LABELS, HEALTH_COLORS, BADGE_CONFIG } from '@/lib/constants'
 import { StatusDropdown } from '@/components/clients/status-dropdown'
@@ -132,6 +132,15 @@ export function ClientTable({ clients }: ClientTableProps) {
                       >
                         {client.first_name} {client.last_name}
                       </Link>
+                      {client.is_birthday_today && (
+                        <span
+                          className="inline-flex items-center gap-1 rounded-full bg-pink-100 px-2 py-0.5 text-[10px] font-medium text-pink-700"
+                          title="¡Hoy es su cumpleaños!"
+                        >
+                          <Cake className="h-3 w-3" />
+                          Cumpleaños
+                        </span>
+                      )}
                       {client.is_renewed && (
                         <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-medium', BADGE_CONFIG.renewed.colors)}>
                           {BADGE_CONFIG.renewed.label}

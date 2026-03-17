@@ -183,6 +183,20 @@ export async function POST(request: NextRequest) {
         })
       }
     }
+
+    // 7. Birthday today
+    if (!alertExists(client.id, 'birthday') && client.birth_date) {
+      const birth = new Date(client.birth_date + 'T12:00:00')
+      if (birth.getMonth() === now.getMonth() && birth.getDate() === now.getDate()) {
+        const age = now.getFullYear() - birth.getFullYear()
+        alertsToCreate.push({
+          client_id: client.id,
+          type: 'birthday',
+          severity: 'low',
+          message: `¡Hoy es el cumpleaños de ${client.first_name} ${client.last_name}! Cumple ${age} años 🎂`,
+        })
+      }
+    }
   }
 
   // Bulk insert alerts

@@ -38,6 +38,7 @@ export const ALERT_TYPE_LABELS: Record<AlertType, string> = {
   training_plan_expiring: 'Plan de entrenamiento por vencer',
   no_call_logged: 'Llamada no registrada',
   program_ending: 'Programa por terminar',
+  birthday: 'Cumpleaños',
 }
 
 export const SEVERITY_COLORS: Record<AlertSeverity, string> = {

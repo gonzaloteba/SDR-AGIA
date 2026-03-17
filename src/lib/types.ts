@@ -7,6 +7,7 @@ export type AlertType =
   | 'training_plan_expiring'
   | 'no_call_logged'
   | 'program_ending'
+  | 'birthday'
 export type AlertSeverity = 'low' | 'medium' | 'high'
 export type UserRole = 'coach' | 'admin'
 export type HealthScore = 'green' | 'red'
@@ -170,4 +171,5 @@ export interface ClientWithHealth extends Client {
   calls_this_month: number
   days_remaining: number
   pending_coach_actions: number
+  is_birthday_today: boolean
 }

@@ -70,10 +70,17 @@ export default async function ClientsPage() {
   }
 
   // Enrich clients with health score
+  const today = new Date()
   const enrichedClients: ClientWithHealth[] = (clients || []).map((client) => {
     const lastCheckinDate = lastCheckinByClient.get(client.id) || null
     const callsCount = callCountByClient.get(client.id) || 0
     const alertCount = alertCountByClient.get(client.id) || 0
+
+    let isBirthdayToday = false
+    if (client.birth_date) {
+      const birth = new Date(client.birth_date + 'T12:00:00')
+      isBirthdayToday = birth.getMonth() === today.getMonth() && birth.getDate() === today.getDate()
+    }
 
     return {
       ...client,
@@ -82,13 +89,30 @@ export default async function ClientsPage() {
       calls_this_month: callsCount,
       days_remaining: getDaysRemaining(client.end_date),
       pending_coach_actions: coachActionsCountByClient.get(client.id) || 0,
+      is_birthday_today: isBirthdayToday,
     }
   })
+
+  const birthdayClients = enrichedClients.filter((c) => c.is_birthday_today)
 
   return (
     <div>
       <Header title="Clientes" />
-      <div className="p-6">
+      <div className="p-6 space-y-4">
+        {birthdayClients.length > 0 && (
+          <div className="rounded-xl border border-pink-200 bg-pink-50 p-4 flex items-center gap-3">
+            <span className="text-2xl">🎂</span>
+            <div>
+              <p className="font-medium text-pink-900">
+                ¡Cumpleaños hoy!
+              </p>
+              <p className="text-sm text-pink-700">
+                {birthdayClients.map((c) => `${c.first_name} ${c.last_name}`).join(', ')}
+                {' — '}No olvides felicitarle{birthdayClients.length > 1 ? 's' : ''}.
+              </p>
+            </div>
+          </div>
+        )}
         <ClientTable clients={enrichedClients} />
       </div>
     </div>

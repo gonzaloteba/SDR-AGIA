@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { AlertTriangle, CheckCircle } from 'lucide-react'
+import { AlertTriangle, CheckCircle, Cake } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -86,16 +86,20 @@ export function AlertList({ alerts }: AlertListProps) {
               )}
             >
               <div className="flex items-start gap-4">
-                <AlertTriangle
-                  className={cn(
-                    'mt-0.5 h-5 w-5 shrink-0',
-                    alert.severity === 'high'
-                      ? 'text-red-500'
-                      : alert.severity === 'medium'
-                        ? 'text-yellow-500'
-                        : 'text-blue-500'
-                  )}
-                />
+                {alert.type === 'birthday' ? (
+                  <Cake className="mt-0.5 h-5 w-5 shrink-0 text-pink-500" />
+                ) : (
+                  <AlertTriangle
+                    className={cn(
+                      'mt-0.5 h-5 w-5 shrink-0',
+                      alert.severity === 'high'
+                        ? 'text-red-500'
+                        : alert.severity === 'medium'
+                          ? 'text-yellow-500'
+                          : 'text-blue-500'
+                    )}
+                  />
+                )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <Link
