@@ -1,20 +1,41 @@
 import { createClient } from '@/lib/supabase/server'
 import { Header } from '@/components/layout/header'
 import { ClientTable } from '@/components/clients/client-table'
+import { CoachSelector } from '@/components/dashboard/coach-selector'
 import { calculateHealthScore, getDaysRemaining } from '@/lib/health-score'
 import { startOfMonth } from 'date-fns'
 import { getCurrentCoach, isAdmin } from '@/lib/auth'
 import type { ClientWithHealth } from '@/lib/types'
 
-export default async function ClientsPage() {
+interface Props {
+  searchParams: Promise<{ coach?: string }>
+}
+
+export default async function ClientsPage({ searchParams }: Props) {
   const supabase = await createClient()
   const coach = await getCurrentCoach()
+  const admin = coach && isAdmin(coach)
+  const { coach: selectedCoachId } = await searchParams
   const monthStart = startOfMonth(new Date()).toISOString()
 
-  // Coaches see only their clients; admins see all
+  // Fetch coach list for admin selector
+  let coaches: { id: string; full_name: string }[] = []
+  if (admin) {
+    const { data } = await supabase
+      .from('coaches')
+      .select('id, full_name')
+      .eq('role', 'coach')
+      .order('full_name')
+    coaches = data ?? []
+  }
+
+  const filterCoachId = admin
+    ? (selectedCoachId || null)
+    : coach?.id ?? null
+
   const clientsQuery = supabase.from('clients').select('*').order('first_name')
-  if (coach && !isAdmin(coach)) {
-    clientsQuery.eq('coach_id', coach.id)
+  if (filterCoachId) {
+    clientsQuery.eq('coach_id', filterCoachId)
   }
 
   const safe = <T,>(promise: PromiseLike<{ data: T | null; error: unknown }>): Promise<{ data: T | null }> =>
@@ -98,10 +119,17 @@ export default async function ClientsPage() {
 
   const birthdayClients = enrichedClients.filter((c) => c.is_birthday_today)
 
+  const selectedCoachName = admin && selectedCoachId
+    ? coaches.find(c => c.id === selectedCoachId)?.full_name ?? null
+    : null
+
   return (
     <div>
-      <Header title="Clientes" />
+      <Header title={selectedCoachName ? `Clientes — ${selectedCoachName}` : 'Clientes'} />
       <div className="p-6 space-y-4">
+        {admin && (
+          <CoachSelector coaches={coaches} selectedCoachId={selectedCoachId ?? null} />
+        )}
         {birthdayClients.length > 0 && (
           <div className="rounded-xl border border-pink-200 bg-pink-50 p-4 flex items-center gap-3">
             <span className="text-2xl">🎂</span>

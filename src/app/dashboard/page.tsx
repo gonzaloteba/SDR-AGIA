@@ -3,27 +3,49 @@ import { Header } from '@/components/layout/header'
 import { KpiCards } from '@/components/dashboard/kpi-cards'
 import { ClientHealthChart } from '@/components/dashboard/client-health-chart'
 import { PhaseDistribution } from '@/components/dashboard/phase-distribution'
+import { CoachSelector } from '@/components/dashboard/coach-selector'
 import { startOfWeek, endOfWeek, startOfMonth } from 'date-fns'
 import { getCurrentCoach, isAdmin } from '@/lib/auth'
 import type { NutritionPhase } from '@/lib/types'
 
-export default async function DashboardPage() {
+interface Props {
+  searchParams: Promise<{ coach?: string }>
+}
+
+export default async function DashboardPage({ searchParams }: Props) {
   const supabase = await createClient()
   const coach = await getCurrentCoach()
+  const admin = coach && isAdmin(coach)
+  const { coach: selectedCoachId } = await searchParams
   const now = new Date()
   const weekStart = startOfWeek(now, { weekStartsOn: 1 }).toISOString()
   const weekEnd = endOfWeek(now, { weekStartsOn: 1 }).toISOString()
   const monthStart = startOfMonth(now).toISOString()
 
-  // Coaches see only their clients; admins see all
+  // Fetch coach list for admin selector
+  let coaches: { id: string; full_name: string }[] = []
+  if (admin) {
+    const { data } = await supabase
+      .from('coaches')
+      .select('id, full_name')
+      .eq('role', 'coach')
+      .order('full_name')
+    coaches = data ?? []
+  }
+
+  // Determine which coach_id to filter by
+  const filterCoachId = admin
+    ? (selectedCoachId || null)  // admin: filter by selected coach, or show all
+    : coach?.id ?? null          // coach: always filter by own id
+
   const clientsQuery = supabase.from('clients').select('*').eq('status', 'active')
-  if (coach && !isAdmin(coach)) {
-    clientsQuery.eq('coach_id', coach.id)
+  if (filterCoachId) {
+    clientsQuery.eq('coach_id', filterCoachId)
   }
 
   const allClientsQuery = supabase.from('clients').select('status').in('status', ['active', 'completed', 'cancelled'])
-  if (coach && !isAdmin(coach)) {
-    allClientsQuery.eq('coach_id', coach.id)
+  if (filterCoachId) {
+    allClientsQuery.eq('coach_id', filterCoachId)
   }
 
   const safe = <T,>(promise: PromiseLike<{ data: T | null; error: unknown }>): Promise<{ data: T | null }> =>
@@ -53,10 +75,12 @@ export default async function DashboardPage() {
   const allClients = allClientsResult.data
 
   const activeClients = clients || []
+  const activeClientIds = new Set(activeClients.map(c => c.id))
   const checkinClientIds = new Set((checkinsThisWeek || []).map((c) => c.client_id))
 
-  // Count unresolved alerts per active client
-  const alertClientIds = new Set((pendingAlerts || []).map((a) => a.client_id))
+  // Count unresolved alerts only for this coach's clients
+  const filteredAlerts = (pendingAlerts || []).filter(a => activeClientIds.has(a.client_id))
+  const alertClientIds = new Set(filteredAlerts.map((a) => a.client_id))
 
   let green = 0
   let red = 0
@@ -77,15 +101,22 @@ export default async function DashboardPage() {
   const cancelled = allClients?.filter((c) => c.status === 'cancelled').length || 0
   const retentionRate = total > 0 ? Math.round(((total - cancelled) / total) * 100) : 100
 
+  const selectedCoachName = admin && selectedCoachId
+    ? coaches.find(c => c.id === selectedCoachId)?.full_name ?? null
+    : null
+
   return (
     <div>
-      <Header title="Dashboard" />
+      <Header title={selectedCoachName ? `Dashboard — ${selectedCoachName}` : 'Dashboard'} />
       <div className="space-y-6 p-6">
+        {admin && (
+          <CoachSelector coaches={coaches} selectedCoachId={selectedCoachId ?? null} />
+        )}
         <KpiCards
           activeClients={activeClients.length}
           checkinsThisWeek={checkinClientIds.size}
           expectedCheckins={activeClients.length}
-          pendingAlerts={pendingAlerts?.length || 0}
+          pendingAlerts={filteredAlerts.length}
           retentionRate={retentionRate}
         />
 

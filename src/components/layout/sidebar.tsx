@@ -1,12 +1,15 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import {
   LayoutDashboard,
   Users,
+  Bell,
   Settings,
   LogOut,
+  Shield,
+  User,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
@@ -15,12 +18,23 @@ import { useRouter } from 'next/navigation'
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Clientes', href: '/dashboard/clients', icon: Users },
+  { name: 'Alertas', href: '/dashboard/alerts', icon: Bell },
   { name: 'Configuración', href: '/dashboard/settings', icon: Settings },
 ]
 
-export function Sidebar() {
+interface SidebarProps {
+  coachName: string | null
+  coachRole: string | null
+}
+
+export function Sidebar({ coachName, coachRole }: SidebarProps) {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const router = useRouter()
+
+  // Preserve coach filter param for admin navigation
+  const coachParam = searchParams.get('coach')
+  const suffix = coachParam ? `?coach=${coachParam}` : ''
 
   async function handleLogout() {
     try {
@@ -49,7 +63,7 @@ export function Sidebar() {
           return (
             <Link
               key={item.name}
-              href={item.href}
+              href={`${item.href}${suffix}`}
               className={cn(
                 'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
                 isActive
@@ -64,7 +78,18 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="border-t p-4">
+      <div className="border-t p-4 space-y-3">
+        {coachName && (
+          <div className="flex items-center gap-3 px-3 py-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+              {coachRole === 'admin' ? <Shield className="h-4 w-4" /> : <User className="h-4 w-4" />}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium">{coachName}</p>
+              <p className="text-xs text-muted-foreground capitalize">{coachRole}</p>
+            </div>
+          </div>
+        )}
         <button
           onClick={handleLogout}
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"

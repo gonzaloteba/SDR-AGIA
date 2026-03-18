@@ -5,6 +5,7 @@ import { ClientDetailHeader } from '@/components/clients/client-detail-header'
 import { ClientDetailTabs } from '@/components/clients/client-detail-tabs'
 import { PendingAlerts } from '@/components/clients/pending-alerts'
 import { PendingCoachActions } from '@/components/clients/pending-coach-actions'
+import { getCurrentCoach, isAdmin } from '@/lib/auth'
 import { notFound } from 'next/navigation'
 import type { NutritionPhase } from '@/lib/types'
 
@@ -15,6 +16,7 @@ interface Props {
 export default async function ClientDetailPage({ params }: Props) {
   const { id } = await params
   const supabase = await createClient()
+  const coach = await getCurrentCoach()
 
   // Fetch client first - if not found, show 404
   const { data: client, error: clientError } = await supabase
@@ -24,6 +26,9 @@ export default async function ClientDetailPage({ params }: Props) {
     .single()
 
   if (clientError || !client) notFound()
+
+  // Non-admin coaches can only access their own clients
+  if (coach && !isAdmin(coach) && client.coach_id !== coach.id) notFound()
 
   // Fetch related data with safe fallbacks - these are non-critical
   const safe = <T,>(promise: PromiseLike<{ data: T | null; error: unknown }>): Promise<{ data: T | null }> =>

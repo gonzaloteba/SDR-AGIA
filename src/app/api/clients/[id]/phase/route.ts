@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAdminClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
 import { PHASE_DURATIONS_DAYS } from '@/lib/constants'
 import { phaseUpdateSchema } from '@/lib/validations'
 import { logger } from '@/lib/logger'
@@ -22,6 +23,20 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const { id } = await context.params
     if (!id) {
       return NextResponse.json({ error: 'Client ID is required' }, { status: 400 })
+    }
+
+    // Verify authenticated user owns this client (or is admin)
+    const userSupabase = await createClient()
+    const { data: { user } } = await userSupabase.auth.getUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const { data: coach } = await userSupabase.from('coaches').select('role').eq('id', user.id).single()
+    if (coach?.role !== 'admin') {
+      const { data: client } = await userSupabase.from('clients').select('coach_id').eq('id', id).single()
+      if (!client || client.coach_id !== user.id) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }
     }
 
     let body: unknown
