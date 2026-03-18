@@ -5,9 +5,14 @@ import { logger } from '@/lib/logger'
 const log = logger('api:migrate:assign-coach')
 
 // POST /api/migrate/assign-coach
-// Assigns all unassigned clients to a coach.
-// Body: { coach_name: string } - matches against coaches.full_name (case-insensitive)
-// Or:   { coach_id: string }   - directly by coach ID
+// Multi-purpose endpoint for coach setup and client assignment.
+//
+// Modes:
+// { "list": true }  - List coaches, auth users, and client counts
+// { "create_coach": { "email": "...", "password": "...", "full_name": "...", "role": "coach"|"admin" } }
+//   - Creates auth user + coach record in one step
+// { "coach_name": "..." } or { "coach_id": "..." }
+//   - Assigns all unassigned clients to matching coach
 export async function POST(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization')
@@ -19,12 +24,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}))
     const supabase = getAdminClient()
 
-    // List mode: return all coaches, auth users, and unassigned client count
+    // List mode
     if (body.list) {
       const { data: allCoaches } = await supabase.from('coaches').select('id, full_name, role')
       const { count } = await supabase.from('clients').select('id', { count: 'exact', head: true }).is('coach_id', null)
       const { count: totalClients } = await supabase.from('clients').select('id', { count: 'exact', head: true })
-      // Try to list auth users
       let authUsers: { id: string; email: string }[] = []
       try {
         const { data } = await supabase.auth.admin.listUsers()
@@ -33,7 +37,67 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ coaches: allCoaches, auth_users: authUsers, unassigned_clients: count, total_clients: totalClients })
     }
 
-    // Setup mode: create coach records from auth users
+    // Create coach mode: creates auth user + coach record in one step
+    if (body.create_coach) {
+      const { email, password, full_name, role } = body.create_coach as {
+        email: string; password: string; full_name: string; role: 'coach' | 'admin'
+      }
+
+      if (!email || !password || !full_name || !role) {
+        return NextResponse.json({ error: 'create_coach requires email, password, full_name, role' }, { status: 400 })
+      }
+
+      // Check if auth user already exists by trying to find them
+      let userId: string | null = null
+
+      // Try creating auth user
+      const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+      })
+
+      if (createError) {
+        // User might already exist - try to find them
+        if (createError.message.includes('already') || createError.message.includes('exists')) {
+          try {
+            const { data: users } = await supabase.auth.admin.listUsers()
+            const existing = users?.users?.find(u => u.email === email)
+            if (existing) userId = existing.id
+          } catch {
+            return NextResponse.json({
+              error: `Auth user creation failed and could not look up existing: ${createError.message}`,
+            }, { status: 500 })
+          }
+        }
+        if (!userId) {
+          return NextResponse.json({ error: `Failed to create auth user: ${createError.message}` }, { status: 500 })
+        }
+      } else {
+        userId = newUser.user.id
+      }
+
+      // Create coach record
+      const { data: coach, error: coachError } = await supabase
+        .from('coaches')
+        .upsert({ id: userId, full_name, role })
+        .select()
+        .single()
+
+      if (coachError) {
+        return NextResponse.json({ error: `Failed to create coach record: ${coachError.message}` }, { status: 500 })
+      }
+
+      log.info('Coach created', { id: userId, full_name, role, email })
+
+      return NextResponse.json({
+        success: true,
+        coach,
+        auth_user_id: userId,
+      })
+    }
+
+    // Legacy setup mode
     if (body.setup) {
       const entries = body.setup as { user_id: string; full_name: string; role: 'coach' | 'admin' }[]
       const results = []
@@ -48,6 +112,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ results })
     }
 
+    // Assign clients mode
     const coachName = body.coach_name as string | undefined
     const coachId = body.coach_id as string | undefined
 
@@ -55,7 +120,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'coach_name or coach_id is required' }, { status: 400 })
     }
 
-    // Find coach
     let coachQuery = supabase.from('coaches').select('id, full_name, role')
     if (coachId) {
       coachQuery = coachQuery.eq('id', coachId)
@@ -78,7 +142,6 @@ export async function POST(request: NextRequest) {
 
     const coach = coaches[0]
 
-    // Count clients with no coach assigned
     const { count: unassigned } = await supabase
       .from('clients')
       .select('id', { count: 'exact', head: true })
@@ -93,7 +156,6 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Assign all unassigned clients to this coach
     const { error: updateError } = await supabase
       .from('clients')
       .update({ coach_id: coach.id })
@@ -104,7 +166,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: updateError.message }, { status: 500 })
     }
 
-    // Also update any calls without a coach_id
     await supabase
       .from('calls')
       .update({ coach_id: coach.id })
