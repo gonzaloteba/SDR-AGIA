@@ -37,7 +37,9 @@ export async function updateSession(request: NextRequest) {
     !user &&
     !request.nextUrl.pathname.startsWith('/login') &&
     !request.nextUrl.pathname.startsWith('/api/webhooks') &&
-    !request.nextUrl.pathname.startsWith('/api/sync')
+    !request.nextUrl.pathname.startsWith('/api/sync') &&
+    !request.nextUrl.pathname.startsWith('/api/migrate') &&
+    !request.nextUrl.pathname.startsWith('/api/cron')
   ) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
