@@ -70,10 +70,72 @@ function removeAccents(str: string): string {
   return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 }
 
+/** Client row shape used for fuzzy matching */
+type ClientNameRow = { id: string; first_name: string; last_name: string }
+
+/**
+ * Fuzzy match a client from a pre-loaded list (no DB query).
+ * Use this in loops to avoid N+1 queries.
+ */
+export function findClientInList(
+  clients: ClientNameRow[],
+  firstName: string,
+  lastName: string
+): { id: string } | null {
+  const fn = firstName.trim()
+  const ln = lastName.trim()
+  const normFn = removeAccents(fn).toLowerCase()
+  const normLn = removeAccents(ln).toLowerCase()
+  const lnFirstWord = normLn.split(/\s+/)[0]
+
+  // 1. Exact match (case-insensitive)
+  const exact = clients.find(
+    (c) =>
+      (c.first_name || '').toLowerCase().trim() === fn.toLowerCase() &&
+      (c.last_name || '').toLowerCase().trim() === ln.toLowerCase()
+  )
+  if (exact) {
+    log.info('Client matched by exact name', { clientId: exact.id, firstName: fn, lastName: ln })
+    return { id: exact.id }
+  }
+
+  // 2. Fuzzy match
+  for (const client of clients) {
+    const cFn = removeAccents(client.first_name || '').toLowerCase().trim()
+    const cLn = removeAccents(client.last_name || '').toLowerCase().trim()
+
+    const fnMatch =
+      cFn === normFn ||
+      normFn === cFn.split(/\s+/)[0] ||
+      cFn === normFn.split(/\s+/)[0]
+
+    if (!fnMatch) continue
+
+    const lnMatch =
+      cLn === normLn ||
+      normLn.startsWith(cLn) ||
+      cLn.startsWith(normLn) ||
+      cLn.split(/\s+/)[0] === lnFirstWord ||
+      cLn === lnFirstWord
+
+    if (lnMatch) {
+      log.info('Client matched by fuzzy name', {
+        clientId: client.id,
+        searchedName: `${fn} ${ln}`,
+        matchedName: `${client.first_name} ${client.last_name}`,
+        matchType: 'fuzzy',
+      })
+      return { id: client.id }
+    }
+  }
+
+  return null
+}
+
 /**
  * Find a client by first + last name with fuzzy matching:
- * 1. Exact match (case-insensitive)
- * 2. Accent-insensitive + partial name matching
+ * 1. Exact match (case-insensitive) via DB
+ * 2. Accent-insensitive + partial name matching in memory
  */
 export async function findClientByName(
   supabase: AdminClient,
@@ -113,43 +175,11 @@ export async function findClientByName(
 
   if (!allClients || allClients.length === 0) return null
 
-  const normFn = removeAccents(fn).toLowerCase()
-  const normLn = removeAccents(ln).toLowerCase()
-  const lnFirstWord = normLn.split(/\s+/)[0]
-
-  for (const client of allClients) {
-    const cFn = removeAccents(client.first_name || '').toLowerCase().trim()
-    const cLn = removeAccents(client.last_name || '').toLowerCase().trim()
-
-    // Match first name: exact, or first word matches
-    const fnMatch =
-      cFn === normFn ||
-      normFn === cFn.split(/\s+/)[0] ||
-      cFn === normFn.split(/\s+/)[0]
-
-    if (!fnMatch) continue
-
-    // Match last name: exact, starts with, or first word matches
-    const lnMatch =
-      cLn === normLn ||
-      normLn.startsWith(cLn) ||
-      cLn.startsWith(normLn) ||
-      cLn.split(/\s+/)[0] === lnFirstWord ||
-      cLn === lnFirstWord
-
-    if (lnMatch) {
-      log.info('Client matched by fuzzy name', {
-        clientId: client.id,
-        searchedName: `${fn} ${ln}`,
-        matchedName: `${client.first_name} ${client.last_name}`,
-        matchType: 'fuzzy',
-      })
-      return { id: client.id }
-    }
+  const result = findClientInList(allClients, fn, ln)
+  if (!result) {
+    log.warn('No client found for name', { firstName: fn, lastName: ln, totalClientsSearched: allClients.length })
   }
-
-  log.warn('No client found for name', { firstName: fn, lastName: ln, totalClientsSearched: allClients.length })
-  return null
+  return result
 }
 
 // ============================================

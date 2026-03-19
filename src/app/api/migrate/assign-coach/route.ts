@@ -15,9 +15,10 @@ const log = logger('api:migrate:assign-coach')
 //   - Assigns all unassigned clients to matching coach
 export async function POST(request: NextRequest) {
   try {
+    // Auth check — only accept CRON_SECRET via Authorization header
     const authHeader = request.headers.get('authorization')
     const secret = authHeader?.replace('Bearer ', '')
-    if (secret !== process.env.CRON_SECRET && secret !== process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    if (!secret || secret !== process.env.CRON_SECRET) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -166,10 +167,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: updateError.message }, { status: 500 })
     }
 
-    await supabase
+    const { error: callsError } = await supabase
       .from('calls')
       .update({ coach_id: coach.id })
       .is('coach_id', null)
+
+    if (callsError) {
+      log.error('Failed to assign coach to calls', { error: callsError.message })
+    }
 
     log.info('Clients assigned to coach', {
       coachId: coach.id,

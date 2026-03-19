@@ -23,19 +23,20 @@ export async function POST(request: NextRequest) {
   try {
     const rawBody = await request.text()
 
-    // Verify Typeform signature (HMAC SHA256)
+    // Verify Typeform signature (HMAC SHA256) — mandatory
     const webhookSecret = process.env.TYPEFORM_WEBHOOK_SECRET
-    if (webhookSecret) {
-      const signature = request.headers.get('Typeform-Signature')
-      if (!signature) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-      }
-      const expectedSig = 'sha256=' + createHmac('sha256', webhookSecret)
-        .update(rawBody)
-        .digest('base64')
-      if (signature !== expectedSig) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-      }
+    if (!webhookSecret) {
+      return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 })
+    }
+    const signature = request.headers.get('Typeform-Signature')
+    if (!signature) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const expectedSig = 'sha256=' + createHmac('sha256', webhookSecret)
+      .update(rawBody)
+      .digest('base64')
+    if (signature !== expectedSig) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const payload = JSON.parse(rawBody)

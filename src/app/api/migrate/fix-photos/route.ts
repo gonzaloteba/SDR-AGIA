@@ -10,11 +10,10 @@ import { fixBrokenPhotoUrls } from '@/lib/photo-storage'
  */
 export async function POST(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
+    // Auth check — only accept CRON_SECRET via Authorization header
     const authHeader = request.headers.get('authorization')
-    const secret = searchParams.get('secret') || authHeader?.replace('Bearer ', '')
-
-    if (secret !== process.env.CRON_SECRET && secret !== process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    const secret = authHeader?.replace('Bearer ', '')
+    if (!secret || secret !== process.env.CRON_SECRET) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

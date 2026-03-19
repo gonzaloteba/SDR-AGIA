@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { createClient } from '@/lib/supabase/server'
 import { getAdminClient } from '@/lib/supabase/admin'
 import { updateEndDateSchema, toggleBadgeSchema, callIdSchema } from '@/lib/validations'
 import { logger } from '@/lib/logger'
@@ -12,11 +13,44 @@ function revalidateDashboard() {
   revalidatePath('/dashboard', 'layout')
 }
 
+/** Verify the current user owns the given client (or is admin) */
+async function authorizeForClient(clientId: string): Promise<{ authorized: true; isAdmin: boolean } | { authorized: false; error: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { authorized: false, error: 'No autenticado' }
+
+  // Check coach role
+  const adminSupabase = getAdminClient()
+  const { data: coach } = await adminSupabase
+    .from('coaches')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (coach?.role === 'admin') return { authorized: true, isAdmin: true }
+
+  // Verify ownership
+  const { data: client } = await adminSupabase
+    .from('clients')
+    .select('coach_id')
+    .eq('id', clientId)
+    .single()
+
+  if (!client || client.coach_id !== user.id) {
+    return { authorized: false, error: 'No autorizado para este cliente' }
+  }
+
+  return { authorized: true, isAdmin: false }
+}
+
 export async function updateClientEndDate(clientId: string, endDate: string) {
   const parsed = updateEndDateSchema.safeParse({ clientId, endDate })
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0].message }
   }
+
+  const auth = await authorizeForClient(parsed.data.clientId)
+  if (!auth.authorized) return { success: false, error: auth.error }
 
   try {
     const supabase = getAdminClient()
@@ -48,6 +82,9 @@ export async function toggleClientBadge(
     return { success: false, error: parsed.error.issues[0].message }
   }
 
+  const auth = await authorizeForClient(parsed.data.clientId)
+  if (!auth.authorized) return { success: false, error: auth.error }
+
   try {
     const supabase = getAdminClient()
     const { error } = await supabase
@@ -74,9 +111,21 @@ export async function completeCoachActions(callId: string) {
     return { success: false, error: 'Invalid call ID' }
   }
 
+  // Look up which client this call belongs to for authorization
+  const adminSupabase = getAdminClient()
+  const { data: call } = await adminSupabase
+    .from('calls')
+    .select('client_id')
+    .eq('id', parsed.data)
+    .single()
+
+  if (!call) return { success: false, error: 'Llamada no encontrada' }
+
+  const auth = await authorizeForClient(call.client_id)
+  if (!auth.authorized) return { success: false, error: auth.error }
+
   try {
-    const supabase = getAdminClient()
-    const { error } = await supabase
+    const { error } = await adminSupabase
       .from('calls')
       .update({ coach_actions_completed: true })
       .eq('id', parsed.data)

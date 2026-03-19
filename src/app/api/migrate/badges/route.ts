@@ -3,10 +3,10 @@ import { getAdminClient } from '@/lib/supabase/admin'
 
 export async function POST(request: NextRequest) {
   try {
-    // Auth check
+    // Auth check — only accept CRON_SECRET via Authorization header
     const authHeader = request.headers.get('authorization')
     const secret = authHeader?.replace('Bearer ', '')
-    if (secret !== process.env.CRON_SECRET && secret !== process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    if (!secret || secret !== process.env.CRON_SECRET) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

@@ -11,9 +11,10 @@ const TYPEFORM_API_BASE = 'https://api.typeform.com'
  * Use this to discover missing field IDs for birth_date, location, etc.
  */
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url)
-  const secret = searchParams.get('secret')
-  if (secret !== process.env.CRON_SECRET && secret !== process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  // Auth check — only accept CRON_SECRET via Authorization header
+  const authHeader = request.headers.get('authorization')
+  const secret = authHeader?.replace('Bearer ', '')
+  if (!secret || secret !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -22,10 +23,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'TYPEFORM_API_TOKEN not configured' }, { status: 500 })
   }
 
-  // Fetch form definition
-  const res = await fetch(`${TYPEFORM_API_BASE}/forms/${AUDIT_FORM_ID}`, {
-    headers: { Authorization: `Bearer ${typeformToken}` },
-  })
+  // Fetch form definition (with timeout)
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 30_000)
+  let res: Response
+  try {
+    res = await fetch(`${TYPEFORM_API_BASE}/forms/${AUDIT_FORM_ID}`, {
+      headers: { Authorization: `Bearer ${typeformToken}` },
+      signal: controller.signal,
+    })
+  } finally {
+    clearTimeout(timeoutId)
+  }
   if (!res.ok) {
     return NextResponse.json({ error: `Typeform API ${res.status}` }, { status: 502 })
   }

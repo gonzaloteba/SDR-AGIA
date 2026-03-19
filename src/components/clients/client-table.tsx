@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { Search, Plus, ClipboardList, Cake } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -19,7 +19,7 @@ export function ClientTable({ clients }: ClientTableProps) {
   const [healthFilter, setHealthFilter] = useState<string>('all')
   const [badgeFilter, setBadgeFilter] = useState<string>('all')
 
-  const filtered = clients.filter((client) => {
+  const filtered = useMemo(() => clients.filter((client) => {
     const matchesSearch =
       `${client.first_name} ${client.last_name}`
         .toLowerCase()
@@ -31,7 +31,7 @@ export function ClientTable({ clients }: ClientTableProps) {
       (badgeFilter === 'renewed' && client.is_renewed) ||
       (badgeFilter === 'success_case' && client.is_success_case)
     return matchesSearch && matchesStatus && matchesHealth && matchesBadge
-  })
+  }), [clients, search, statusFilter, healthFilter, badgeFilter])
 
   return (
     <div className="space-y-4">

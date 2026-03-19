@@ -50,7 +50,7 @@ export function CallsLog({ calls, clientId }: CallsLogProps) {
       setShowForm(false)
       router.refresh()
     } catch {
-      alert('Error al guardar la llamada. Inténtalo de nuevo.')
+      toast('Error al guardar la llamada. Inténtalo de nuevo.', 'error')
     } finally {
       setLoading(false)
     }

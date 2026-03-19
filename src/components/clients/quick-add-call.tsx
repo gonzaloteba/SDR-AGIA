@@ -55,7 +55,7 @@ export function QuickAddCall({ clientId, callsThisMonth }: QuickAddCallProps) {
       setOpen(false)
       router.refresh()
     } catch {
-      alert('Error al registrar la llamada.')
+      toast('Error al registrar la llamada.', 'error')
     } finally {
       setLoading(false)
     }
@@ -81,7 +81,7 @@ export function QuickAddCall({ clientId, callsThisMonth }: QuickAddCallProps) {
 
       router.refresh()
     } catch {
-      alert('Error al registrar la llamada.')
+      toast('Error al registrar la llamada.', 'error')
     } finally {
       setLoading(false)
     }
