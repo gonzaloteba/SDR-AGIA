@@ -51,8 +51,18 @@ function syncTranscripts() {
     }
 
     try {
-      const doc = DocumentApp.openById(file.getId());
-      const transcript = doc.getBody().getText();
+      // Use Drive export API instead of DocumentApp.openById()
+      // because Gemini "Notas de Gemini" docs cannot be opened by DocumentApp
+      const exportUrl = 'https://docs.google.com/document/d/' + file.getId() + '/export?format=txt';
+      const response = UrlFetchApp.fetch(exportUrl, {
+        headers: { 'Authorization': 'Bearer ' + ScriptApp.getOAuthToken() },
+        muteHttpExceptions: true,
+      });
+      if (response.getResponseCode() !== 200) {
+        Logger.log('Cannot export ' + fileName + ' (code ' + response.getResponseCode() + '), skipping');
+        continue;
+      }
+      const transcript = response.getContentText();
 
       // Skip empty docs
       if (!transcript || transcript.trim().length === 0) {
@@ -138,23 +148,38 @@ function extractDateFromFile(file) {
 
 /**
  * Try to extract client name from the transcript file name.
- * Gemini typically names files like "Meeting transcript - Title"
- * or includes participant names. This is best-effort.
+ *
+ * Real Gemini filename formats observed:
+ *   "Marcel Despagne y Tony Tirado Zalud: 2026/03/20 14:32 CST - Notas de Gemini"
+ *   "La reunión se inició a las 2026/03/20 15:01 CST - Notas de Gemini"
+ *   "Davide x Tony Zalud: 2026/03/03 12:11 CST - Notas de Gemini"
+ *
+ * Strategy: extract the first participant name (before " y " or " x "),
+ * ignoring the coach name (Tony/Admisiones) and the date/Gemini suffix.
  */
 function extractClientName(fileName) {
-  // Remove common prefixes from Gemini transcript names
-  let cleaned = fileName
-    .replace(/^(Meeting transcript|Transcript|Transcripción)\s*[-–—:]\s*/i, '')
-    .replace(/^\d{4}-\d{2}-\d{2}\s*[-–—]?\s*/, '')
-    .trim();
+  // Remove "- Notas de Gemini" suffix
+  let cleaned = fileName.replace(/\s*-\s*Notas de Gemini\s*$/i, '').trim();
 
-  // If nothing useful remains, return empty
-  if (!cleaned || cleaned.length < 2) {
+  // Remove date suffix like ": 2026/03/20 14:32 CST"
+  cleaned = cleaned.replace(/:\s*\d{4}\/\d{2}\/\d{2}\s+\d{2}:\d{2}\s+\w+\s*$/, '').trim();
+
+  // Skip files that start with "La reunión se inició" — no client name
+  if (/^La reunión se inició/i.test(cleaned)) {
     return { firstName: null, lastName: null };
   }
 
-  // Try to split into first and last name
-  const parts = cleaned.split(/\s+/);
+  // Split by " y " or " x " to separate participants
+  const participants = cleaned.split(/\s+[yx]\s+/i);
+
+  // First participant is the client (second is typically the coach)
+  const clientPart = (participants[0] || '').trim();
+
+  if (!clientPart || clientPart.length < 2) {
+    return { firstName: null, lastName: null };
+  }
+
+  const parts = clientPart.split(/\s+/);
   if (parts.length >= 2) {
     return {
       firstName: parts[0],
@@ -200,8 +225,14 @@ function testWithoutMarking() {
 
   if (files.hasNext()) {
     const file = files.next();
-    const doc = DocumentApp.openById(file.getId());
-    const transcript = doc.getBody().getText();
+    const exportUrl = 'https://docs.google.com/document/d/' + file.getId() + '/export?format=txt';
+    const response = UrlFetchApp.fetch(exportUrl, {
+      headers: { 'Authorization': 'Bearer ' + ScriptApp.getOAuthToken() },
+      muteHttpExceptions: true,
+    });
+    const transcript = response.getResponseCode() === 200
+      ? response.getContentText()
+      : '(export failed: ' + response.getResponseCode() + ')';
 
     Logger.log('File: ' + file.getName());
     Logger.log('Transcript preview: ' + transcript.substring(0, 500));
