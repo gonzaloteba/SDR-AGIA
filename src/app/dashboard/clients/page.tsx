@@ -5,7 +5,7 @@ import { Header } from '@/components/layout/header'
 import { ClientTable } from '@/components/clients/client-table'
 import { CoachSelector } from '@/components/dashboard/coach-selector'
 import { calculateHealthScore, getDaysRemaining } from '@/lib/health-score'
-import { startOfMonth } from 'date-fns'
+import { startOfMonth, startOfWeek, endOfWeek } from 'date-fns'
 import { getCurrentCoach, isAdmin } from '@/lib/auth'
 import type { ClientWithHealth } from '@/lib/types'
 
@@ -18,7 +18,10 @@ export default async function ClientsPage({ searchParams }: Props) {
   const coach = await getCurrentCoach()
   const admin = coach && isAdmin(coach)
   const { coach: selectedCoachId } = await searchParams
-  const monthStart = startOfMonth(new Date()).toISOString()
+  const now = new Date()
+  const monthStart = startOfMonth(now).toISOString()
+  const weekStart = startOfWeek(now, { weekStartsOn: 1 }).toISOString()
+  const weekEnd = endOfWeek(now, { weekStartsOn: 1 }).toISOString()
 
   // Fetch coach list for admin selector
   let coaches: { id: string; full_name: string }[] = []
@@ -52,7 +55,7 @@ export default async function ClientsPage({ searchParams }: Props) {
     )
   }
 
-  const clientsQuery = supabase.from('clients').select('*').order('first_name')
+  const clientsQuery = supabase.from('clients').select('*').order('start_date', { ascending: false })
   if (filterCoachId) {
     clientsQuery.eq('coach_id', filterCoachId)
   }
@@ -66,6 +69,7 @@ export default async function ClientsPage({ searchParams }: Props) {
     { data: callsThisMonth },
     { data: unresolvedAlerts },
     { data: pendingCoachActions },
+    { data: weeklyCheckins },
   ] = await Promise.all([
     safe(clientsQuery),
     safe(supabase
@@ -85,6 +89,11 @@ export default async function ClientsPage({ searchParams }: Props) {
       .select('client_id')
       .not('coach_actions', 'is', null)
       .eq('coach_actions_completed', false)),
+    safe(supabase
+      .from('check_ins')
+      .select('client_id')
+      .gte('submitted_at', weekStart)
+      .lte('submitted_at', weekEnd)),
   ])
 
   // Build lookup maps
@@ -112,12 +121,17 @@ export default async function ClientsPage({ searchParams }: Props) {
     coachActionsCountByClient.set(action.client_id, (coachActionsCountByClient.get(action.client_id) || 0) + 1)
   }
 
+  // Build set of clients who checked in this week
+  const weeklyCheckinClientIds = new Set((weeklyCheckins || []).map(c => c.client_id))
+
   // Enrich clients with health score
   const today = new Date()
   const enrichedClients: ClientWithHealth[] = (clients || []).map((client) => {
     const lastCheckinDate = lastCheckinByClient.get(client.id) || null
     const callsCount = callCountByClient.get(client.id) || 0
     const alertCount = alertCountByClient.get(client.id) || 0
+    const pendingActions = coachActionsCountByClient.get(client.id) || 0
+    const hasWeeklyCheckin = weeklyCheckinClientIds.has(client.id)
 
     let isBirthdayToday = false
     if (client.birth_date) {
@@ -127,11 +141,16 @@ export default async function ClientsPage({ searchParams }: Props) {
 
     return {
       ...client,
-      health_score: calculateHealthScore(alertCount),
+      health_score: calculateHealthScore({
+        unresolvedAlerts: alertCount,
+        pendingCoachActions: pendingActions,
+        hasWeeklyCheckin,
+      }),
       last_checkin_date: lastCheckinDate,
+      has_weekly_checkin: hasWeeklyCheckin,
       calls_this_month: callsCount,
       days_remaining: getDaysRemaining(client.end_date),
-      pending_coach_actions: coachActionsCountByClient.get(client.id) || 0,
+      pending_coach_actions: pendingActions,
       is_birthday_today: isBirthdayToday,
     }
   })

@@ -168,6 +168,7 @@ export interface Coach {
 export interface ClientWithHealth extends Client {
   health_score: HealthScore
   last_checkin_date: string | null
+  has_weekly_checkin: boolean
   calls_this_month: number
   days_remaining: number
   pending_coach_actions: number

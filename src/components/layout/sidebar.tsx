@@ -5,7 +5,6 @@ import { usePathname, useSearchParams } from 'next/navigation'
 import {
   LayoutDashboard,
   Users,
-  Bell,
   Settings,
   LogOut,
   Shield,
@@ -18,7 +17,6 @@ import { useRouter } from 'next/navigation'
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Clientes', href: '/dashboard/clients', icon: Users },
-  { name: 'Alertas', href: '/dashboard/alerts', icon: Bell },
   { name: 'Configuración', href: '/dashboard/settings', icon: Settings },
 ]
 

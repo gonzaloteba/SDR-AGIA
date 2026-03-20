@@ -74,7 +74,7 @@ export default async function DashboardPage({ searchParams }: Props) {
   const safe = <T,>(promise: PromiseLike<{ data: T | null; error: unknown }>): Promise<{ data: T | null }> =>
     Promise.resolve(promise).then(r => ({ data: r.data })).catch(() => ({ data: null }))
 
-  const [clientsResult, checkinsResult, callsResult, alertsResult, allClientsResult] = await Promise.all([
+  const [clientsResult, checkinsResult, callsResult, alertsResult, allClientsResult, coachActionsResult] = await Promise.all([
     safe(clientsQuery),
     safe(supabase
       .from('check_ins')
@@ -90,12 +90,18 @@ export default async function DashboardPage({ searchParams }: Props) {
       .select('id, client_id')
       .eq('is_resolved', false)),
     safe(allClientsQuery),
+    safe(supabase
+      .from('calls')
+      .select('client_id')
+      .not('coach_actions', 'is', null)
+      .eq('coach_actions_completed', false)),
   ])
 
   const clients = clientsResult.data
   const checkinsThisWeek = checkinsResult.data
   const pendingAlerts = alertsResult.data
   const allClients = allClientsResult.data
+  const pendingCoachActions = coachActionsResult.data
 
   const activeClients = clients || []
   const activeClientIds = new Set(activeClients.map(c => c.id))
@@ -105,12 +111,18 @@ export default async function DashboardPage({ searchParams }: Props) {
   const filteredAlerts = (pendingAlerts || []).filter(a => activeClientIds.has(a.client_id))
   const alertClientIds = new Set(filteredAlerts.map((a) => a.client_id))
 
+  // Clients with pending coach actions
+  const coachActionClientIds = new Set(
+    (pendingCoachActions || []).filter(a => activeClientIds.has(a.client_id)).map(a => a.client_id)
+  )
+
   let green = 0
   let red = 0
   const phaseDistribution: Record<NutritionPhase, number> = { 1: 0, 2: 0, 3: 0 }
 
   for (const client of activeClients) {
-    if (alertClientIds.has(client.id)) red++
+    const hasIssue = alertClientIds.has(client.id) || coachActionClientIds.has(client.id) || !checkinClientIds.has(client.id)
+    if (hasIssue) red++
     else green++
 
     const phase = client.current_phase as NutritionPhase
@@ -139,7 +151,6 @@ export default async function DashboardPage({ searchParams }: Props) {
           activeClients={activeClients.length}
           checkinsThisWeek={checkinClientIds.size}
           expectedCheckins={activeClients.length}
-          pendingAlerts={filteredAlerts.length}
           retentionRate={retentionRate}
         />
 

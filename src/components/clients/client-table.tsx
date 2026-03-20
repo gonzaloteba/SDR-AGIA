@@ -18,6 +18,7 @@ export function ClientTable({ clients }: ClientTableProps) {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [healthFilter, setHealthFilter] = useState<string>('all')
   const [badgeFilter, setBadgeFilter] = useState<string>('all')
+  const [checkinFilter, setCheckinFilter] = useState<string>('all')
 
   const filtered = useMemo(() => clients.filter((client) => {
     const matchesSearch =
@@ -30,8 +31,12 @@ export function ClientTable({ clients }: ClientTableProps) {
       badgeFilter === 'all' ||
       (badgeFilter === 'renewed' && client.is_renewed) ||
       (badgeFilter === 'success_case' && client.is_success_case)
-    return matchesSearch && matchesStatus && matchesHealth && matchesBadge
-  }), [clients, search, statusFilter, healthFilter, badgeFilter])
+    const matchesCheckin =
+      checkinFilter === 'all' ||
+      (checkinFilter === 'yes' && client.has_weekly_checkin) ||
+      (checkinFilter === 'no' && !client.has_weekly_checkin)
+    return matchesSearch && matchesStatus && matchesHealth && matchesBadge && matchesCheckin
+  }), [clients, search, statusFilter, healthFilter, badgeFilter, checkinFilter])
 
   return (
     <div className="space-y-4">
@@ -75,6 +80,15 @@ export function ClientTable({ clients }: ClientTableProps) {
           <option value="green">Verde</option>
           <option value="red">Rojo</option>
         </select>
+        <select
+          value={checkinFilter}
+          onChange={(e) => setCheckinFilter(e.target.value)}
+          className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+        >
+          <option value="all">Check-in Semanal</option>
+          <option value="yes">Sí</option>
+          <option value="no">No</option>
+        </select>
         <Link
           href="/dashboard/clients/new"
           className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
@@ -94,7 +108,7 @@ export function ClientTable({ clients }: ClientTableProps) {
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Estado</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Fase</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Días restantes</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Último check-in</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Check-in Semanal</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Llamadas/mes</th>
             </tr>
           </thead>
@@ -174,10 +188,15 @@ export function ClientTable({ clients }: ClientTableProps) {
                   <td className="px-4 py-3 text-sm">
                     {client.days_remaining} días
                   </td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground">
-                    {client.last_checkin_date
-                      ? new Date(client.last_checkin_date).toLocaleDateString('es-ES')
-                      : 'Sin check-in'}
+                  <td className="px-4 py-3 text-sm">
+                    <span className={cn(
+                      'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
+                      client.has_weekly_checkin
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-red-100 text-red-800'
+                    )}>
+                      {client.has_weekly_checkin ? 'Sí' : 'No'}
+                    </span>
                   </td>
                   <td className="px-4 py-3 text-sm">
                     <QuickAddCall

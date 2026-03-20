@@ -5,6 +5,7 @@ import { Plus, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { cn, inputClass, textareaClass } from '@/lib/utils'
+import { CALLS_PER_MONTH } from '@/lib/constants'
 import { useToast } from '@/components/ui/toast'
 
 interface QuickAddCallProps {
@@ -89,7 +90,7 @@ export function QuickAddCall({ clientId, callsThisMonth }: QuickAddCallProps) {
 
   return (
     <div className="relative inline-flex items-center gap-1.5">
-      <span className="text-sm">{callsThisMonth}/3</span>
+      <span className="text-sm">{callsThisMonth}/{CALLS_PER_MONTH}</span>
       <button
         type="button"
         onClick={(e) => {

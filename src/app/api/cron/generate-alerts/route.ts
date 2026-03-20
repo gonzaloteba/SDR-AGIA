@@ -191,20 +191,20 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // 5. No call logged this week (except week 4)
+        // 5. No call logged (2 calls expected per month)
         if (!alertExists(client.id, 'no_call_logged')) {
           const weekOfMonth = getWeekOfMonth(now)
-          if (weekOfMonth < 4) {
-            const callsThisMonth = callCountByClient.get(client.id) || 0
-            const dayOfWeek = now.getDay()
-            if (dayOfWeek >= 5 && callsThisMonth < weekOfMonth) {
-              alertsToCreate.push({
-                client_id: client.id,
-                type: 'no_call_logged',
-                severity: 'high',
-                message: `${client.first_name} ${client.last_name}: ${callsThisMonth} llamadas registradas de ${weekOfMonth} esperadas este mes`,
-              })
-            }
+          // Expect 1 call by week 2, 2 calls by week 4
+          const expectedCalls = Math.min(2, Math.ceil(weekOfMonth / 2))
+          const callsThisMonth = callCountByClient.get(client.id) || 0
+          const dayOfWeek = now.getDay()
+          if (dayOfWeek >= 5 && callsThisMonth < expectedCalls) {
+            alertsToCreate.push({
+              client_id: client.id,
+              type: 'no_call_logged',
+              severity: 'high',
+              message: `${client.first_name} ${client.last_name}: ${callsThisMonth} llamadas registradas de ${expectedCalls} esperadas este mes`,
+            })
           }
         }
 
