@@ -73,8 +73,8 @@ export function ClientTable({ clients }: ClientTableProps) {
   const filtered = useMemo(() => clients.filter((client) => {
     const matchesSearch =
       `${client.first_name} ${client.last_name}`
-        .toLowerCase()
-        .includes(deferredSearch.toLowerCase())
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+        .includes(deferredSearch.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase())
     const matchesStatus = statusFilter === 'all' || client.status === statusFilter
     const matchesHealth = healthFilter === 'all' || client.health_score === healthFilter
     const matchesBadge =
