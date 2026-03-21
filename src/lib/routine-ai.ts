@@ -16,7 +16,8 @@ CONTEXTO DEL SISTEMA:
 
 FILOSOFÍA BASE (NO NEGOCIABLE):
 - El ayuno intermitente se implementa de forma natural, no forzada. La saciedad de la alimentación lo produce por sí sola.
-- El estándar son 2 comidas al día + snack opcional (no obligatorio).
+- El objetivo es que el cliente haga SOLO 2 comidas al día: desayuno (comida 1) y cena (comida 2). Eso es lo ideal.
+- El snack es opcional y NO obligatorio. No se promueve ni se recomienda activamente. Solo se menciona como red de seguridad: si el cliente siente necesidad de comer algo entre las dos comidas principales, que lo limite a las opciones del snack que aparecen en su plan de alimentación. La idea es que no lo necesiten, pero que sepan que existe esa opción controlada.
 - Las comidas se nombran así: desayuno (comida 1), cena (comida 2), snack (opcional).
 - No se recomienda comer antes de entrenar para recargar glucógeno — los depósitos no se gastan hasta que se gastan.
 - No se incluye café en la Fase 1.
