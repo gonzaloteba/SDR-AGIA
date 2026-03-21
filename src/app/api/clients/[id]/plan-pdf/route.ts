@@ -5,7 +5,7 @@ import { generatePlanPdf } from '@/lib/pdf-generator'
 import type { Client } from '@/lib/types'
 
 export async function POST(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
@@ -50,8 +50,7 @@ export async function POST(
 
     // Generate PDF with routine embedded in page 3
     const clientName = `${typedClient.first_name} ${typedClient.last_name}`
-    const baseUrl = new URL(request.url).origin
-    const pdfBytes = await generatePlanPdf(clientName, routine, baseUrl)
+    const pdfBytes = await generatePlanPdf(clientName, routine)
 
     // Return PDF as downloadable file
     const fileName = `Plan Alimentacion - ${typedClient.first_name} ${typedClient.last_name}.pdf`

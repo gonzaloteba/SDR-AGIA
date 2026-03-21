@@ -40,6 +40,9 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  outputFileTracingIncludes: {
+    '/api/clients/\\[id\\]/plan-pdf': ['./public/plan-template.pdf'],
+  },
 };
 
 export default nextConfig;

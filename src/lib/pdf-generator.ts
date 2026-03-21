@@ -1,4 +1,6 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
+import { readFile } from 'fs/promises'
+import { join } from 'path'
 
 const COLORS = {
   heading: rgb(0.298, 0.376, 0.082),  // Dark olive green matching ZALUD brand (#4C6015)
@@ -15,16 +17,11 @@ const SECTION_GAP = 10
 
 export async function generatePlanPdf(
   clientName: string,
-  routineContent: string,
-  baseUrl: string
+  routineContent: string
 ): Promise<Uint8Array> {
-  // Fetch template PDF via HTTP (works in both local dev and Vercel serverless)
-  const templateUrl = `${baseUrl}/plan-template.pdf`
-  const res = await fetch(templateUrl)
-  if (!res.ok) {
-    throw new Error(`Failed to fetch PDF template: ${res.status} ${res.statusText}`)
-  }
-  const templateBytes = await res.arrayBuffer()
+  // Read template from filesystem (included in Vercel bundle via outputFileTracingIncludes)
+  const templatePath = join(process.cwd(), 'public', 'plan-template.pdf')
+  const templateBytes = await readFile(templatePath)
   const pdf = await PDFDocument.load(templateBytes)
 
   const page = pdf.getPage(PAGE_INDEX)
