@@ -5,8 +5,9 @@ export function calculateHealthScore(opts: {
   unresolvedAlerts: number
   pendingCoachActions: number
   hasWeeklyCheckin: boolean
+  hasPendingPhaseChange?: boolean
 }): HealthScore {
-  if (opts.unresolvedAlerts > 0 || opts.pendingCoachActions > 0 || !opts.hasWeeklyCheckin) {
+  if (opts.unresolvedAlerts > 0 || opts.pendingCoachActions > 0 || !opts.hasWeeklyCheckin || opts.hasPendingPhaseChange) {
     return 'red'
   }
   return 'green'

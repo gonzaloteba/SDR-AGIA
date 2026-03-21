@@ -5,7 +5,8 @@ import { Header } from '@/components/layout/header'
 import { ClientTable } from '@/components/clients/client-table'
 import { CoachSelector } from '@/components/dashboard/coach-selector'
 import { calculateHealthScore, getDaysRemaining } from '@/lib/health-score'
-import { startOfMonth, startOfWeek, endOfWeek } from 'date-fns'
+import { startOfMonth, startOfWeek, endOfWeek, differenceInDays } from 'date-fns'
+import { PHASE_ALERT_DAYS_BEFORE } from '@/lib/constants'
 import { getCurrentCoach, isAdmin } from '@/lib/auth'
 import type { ClientWithHealth } from '@/lib/types'
 
@@ -139,12 +140,20 @@ export default async function ClientsPage({ searchParams }: Props) {
       isBirthdayToday = birth.getMonth() === today.getMonth() && birth.getDate() === today.getDate()
     }
 
+    // Check if phase change is pending (within alert window)
+    let hasPendingPhaseChange = false
+    if (client.phase_change_date && client.current_phase < 3 && client.custom_phase_duration_days !== -1) {
+      const daysUntil = differenceInDays(new Date(client.phase_change_date), today)
+      hasPendingPhaseChange = daysUntil >= 0 && daysUntil <= PHASE_ALERT_DAYS_BEFORE
+    }
+
     return {
       ...client,
       health_score: calculateHealthScore({
         unresolvedAlerts: alertCount,
         pendingCoachActions: pendingActions,
         hasWeeklyCheckin,
+        hasPendingPhaseChange,
       }),
       last_checkin_date: lastCheckinDate,
       has_weekly_checkin: hasWeeklyCheckin,
@@ -152,6 +161,7 @@ export default async function ClientsPage({ searchParams }: Props) {
       days_remaining: getDaysRemaining(client.end_date),
       pending_coach_actions: pendingActions,
       is_birthday_today: isBirthdayToday,
+      has_pending_phase_change: hasPendingPhaseChange,
     }
   })
 

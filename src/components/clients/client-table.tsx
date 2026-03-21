@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
-import { Search, Plus, ClipboardList, Cake } from 'lucide-react'
+import { Search, Plus, ClipboardList, Cake, ArrowRightCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PHASE_LABELS, HEALTH_COLORS, BADGE_CONFIG } from '@/lib/constants'
 import { StatusDropdown } from '@/components/clients/status-dropdown'
@@ -163,6 +163,15 @@ export function ClientTable({ clients }: ClientTableProps) {
                       {client.is_success_case && (
                         <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-medium', BADGE_CONFIG.success_case.colors)}>
                           {BADGE_CONFIG.success_case.label}
+                        </span>
+                      )}
+                      {client.has_pending_phase_change && (
+                        <span
+                          className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700"
+                          title="Cambio de fase pendiente"
+                        >
+                          <ArrowRightCircle className="h-3 w-3" />
+                          Cambio fase
                         </span>
                       )}
                       {client.pending_coach_actions > 0 && (
