@@ -1,4 +1,5 @@
-import sharp from 'sharp'
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const heicConvert = require('heic-convert')
 import type { AdminClient } from '@/lib/supabase/admin'
 
 /** Content types that browsers cannot display natively and need conversion */
@@ -58,7 +59,7 @@ export async function persistPhoto(
 
       // Convert HEIC/HEIF to JPEG (browsers cannot display these formats)
       if (NEEDS_CONVERSION.some((t) => contentType.includes(t))) {
-        buffer = Buffer.from(await sharp(buffer).jpeg({ quality: 85 }).toBuffer())
+        buffer = Buffer.from(await heicConvert({ buffer, format: 'JPEG', quality: 0.85 }))
         contentType = 'image/jpeg'
       }
 
@@ -207,7 +208,7 @@ export async function reconvertHeicPhotos(
     if (!isHeic) return null
 
     // Convert to JPEG
-    const jpegBuffer = Buffer.from(await sharp(buffer).jpeg({ quality: 85 }).toBuffer())
+    const jpegBuffer = Buffer.from(await heicConvert({ buffer, format: 'JPEG', quality: 0.85 }))
 
     // Upload to new path
     const timestamp = Date.now()

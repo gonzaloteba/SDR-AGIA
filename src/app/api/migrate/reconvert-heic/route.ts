@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAdminClient } from '@/lib/supabase/admin'
 import { reconvertHeicPhotos } from '@/lib/photo-storage'
 
+// Allow up to 120s for HEIC conversion (pure JS decoder is slow)
+export const maxDuration = 120
+
 /**
  * POST /api/migrate/reconvert-heic
  *
