@@ -19,7 +19,7 @@ export async function generatePlanPdf(
   baseUrl: string
 ): Promise<Uint8Array> {
   // Fetch template PDF via HTTP (works in both local dev and Vercel serverless)
-  const templateUrl = `${baseUrl}/Alimentaci%C3%B3n%20Zalud%20%20Nombre.pdf`
+  const templateUrl = `${baseUrl}/plan-template.pdf`
   const res = await fetch(templateUrl)
   if (!res.ok) {
     throw new Error(`Failed to fetch PDF template: ${res.status} ${res.statusText}`)
