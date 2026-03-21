@@ -127,7 +127,7 @@ export async function completeCoachActions(callId: string) {
   try {
     const { error } = await adminSupabase
       .from('calls')
-      .update({ coach_actions_completed: true })
+      .update({ coach_actions_completed: true, coach_actions_completed_items: [] })
       .eq('id', parsed.data)
 
     if (error) {
@@ -139,6 +139,61 @@ export async function completeCoachActions(callId: string) {
     return { success: true }
   } catch (e) {
     log.error('Unexpected error completing actions', { callId, error: (e as Error).message })
+    return { success: false, error: 'Error inesperado' }
+  }
+}
+
+export async function toggleCoachActionItem(callId: string, itemIndex: number, completed: boolean) {
+  const parsed = callIdSchema.safeParse(callId)
+  if (!parsed.success) {
+    return { success: false, error: 'Invalid call ID' }
+  }
+
+  const adminSupabase = getAdminClient()
+  const { data: call } = await adminSupabase
+    .from('calls')
+    .select('client_id, coach_actions, coach_actions_completed_items')
+    .eq('id', parsed.data)
+    .single()
+
+  if (!call) return { success: false, error: 'Llamada no encontrada' }
+
+  const auth = await authorizeForClient(call.client_id)
+  if (!auth.authorized) return { success: false, error: auth.error }
+
+  try {
+    const currentItems: number[] = (call.coach_actions_completed_items as number[]) || []
+    let newItems: number[]
+
+    if (completed) {
+      newItems = currentItems.includes(itemIndex) ? currentItems : [...currentItems, itemIndex]
+    } else {
+      newItems = currentItems.filter((i) => i !== itemIndex)
+    }
+
+    // Count total action items to check if all are now completed
+    const totalActions = (call.coach_actions || '')
+      .split('\n')
+      .filter((line: string) => line.trim().length > 0).length
+    const allCompleted = totalActions > 0 && newItems.length >= totalActions
+
+    const { error } = await adminSupabase
+      .from('calls')
+      .update({
+        coach_actions_completed_items: newItems,
+        coach_actions_completed: allCompleted,
+      })
+      .eq('id', parsed.data)
+
+    if (error) {
+      log.error('Failed to toggle coach action item', { callId, itemIndex, error: error.message })
+      return { success: false, error: error.message }
+    }
+
+    revalidateDashboard()
+    return { success: true, allCompleted }
+  } catch (e) {
+    log.error('Unexpected error toggling action item', { callId, error: (e as Error).message })
     return { success: false, error: 'Error inesperado' }
   }
 }

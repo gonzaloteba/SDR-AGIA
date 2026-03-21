@@ -132,6 +132,7 @@ export interface Call {
   meet_link: string | null
   coach_actions: string | null
   coach_actions_completed: boolean
+  coach_actions_completed_items: number[]
   created_at: string
 }
 
