@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft, ExternalLink, Edit, Pencil, Check, X, Loader2 } from 'lucide-react'
+import { ArrowLeft, ExternalLink, Edit, Pencil, Check, X, Loader2, FileDown } from 'lucide-react'
 import { PHASE_LABELS, BADGE_CONFIG } from '@/lib/constants'
 import { getDaysRemaining } from '@/lib/health-score'
 import { StatusDropdown } from '@/components/clients/status-dropdown'
@@ -24,6 +24,7 @@ export function ClientDetailHeader({ client, alertCount }: ClientDetailHeaderPro
   const [isRenewed, setIsRenewed] = useState(client.is_renewed)
   const [isSuccessCase, setIsSuccessCase] = useState(client.is_success_case)
   const [togglingBadge, setTogglingBadge] = useState<string | null>(null)
+  const [generatingPdf, setGeneratingPdf] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
   const coachParam = searchParams.get('coach')
@@ -149,6 +150,39 @@ export function ClientDetailHeader({ client, alertCount }: ClientDetailHeaderPro
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={async () => {
+              setGeneratingPdf(true)
+              try {
+                const res = await fetch(`/api/clients/${client.id}/plan-pdf`, { method: 'POST' })
+                if (!res.ok) {
+                  const err = await res.json()
+                  alert(err.error || 'Error al generar el PDF')
+                  return
+                }
+                const blob = await res.blob()
+                const url = URL.createObjectURL(blob)
+                const a = document.createElement('a')
+                a.href = url
+                a.download = `Plan Alimentacion - ${client.first_name} ${client.last_name}.pdf`
+                a.click()
+                URL.revokeObjectURL(url)
+              } catch {
+                alert('Error de conexión al generar el PDF')
+              } finally {
+                setGeneratingPdf(false)
+              }
+            }}
+            disabled={generatingPdf}
+            className="inline-flex items-center gap-1.5 rounded-md border bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+          >
+            {generatingPdf ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <FileDown className="h-3 w-3" />
+            )}
+            {generatingPdf ? 'Generando...' : 'Plan PDF'}
+          </button>
           {client.drive_folder_url && (
             <a
               href={client.drive_folder_url}
