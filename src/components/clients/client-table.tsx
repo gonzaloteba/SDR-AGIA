@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { Search, Plus, ClipboardList, Cake, ArrowRightCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { PHASE_LABELS, HEALTH_COLORS, BADGE_CONFIG } from '@/lib/constants'
+import { PHASE_LABELS, HEALTH_COLORS, BADGE_CONFIG, CHECKIN_GRACE_DAYS } from '@/lib/constants'
 import { StatusDropdown } from '@/components/clients/status-dropdown'
 import { QuickAddCall } from '@/components/clients/quick-add-call'
 import type { ClientWithHealth, NutritionPhase } from '@/lib/types'
@@ -248,14 +248,29 @@ export function ClientTable({ clients }: ClientTableProps) {
                     {client.days_remaining} días
                   </td>
                   <td className="px-4 py-3 text-sm">
-                    <span className={cn(
-                      'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
-                      client.has_recent_checkin
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-red-100 text-red-800'
-                    )}>
-                      {client.has_recent_checkin ? 'Sí' : 'No'}
-                    </span>
+                    {(() => {
+                      const daysSince = client.last_checkin_date
+                        ? Math.floor((Date.now() - new Date(client.last_checkin_date).getTime()) / (1000 * 60 * 60 * 24))
+                        : null
+                      const daysLeft = daysSince !== null ? Math.max(0, CHECKIN_GRACE_DAYS - daysSince) : 0
+                      return (
+                        <div className="flex items-center gap-2">
+                          <span className={cn(
+                            'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
+                            client.has_recent_checkin
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-red-100 text-red-800'
+                          )}>
+                            {client.has_recent_checkin ? 'Sí' : 'No'}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {client.has_recent_checkin
+                              ? `${daysLeft}d restantes`
+                              : daysSince !== null ? `hace ${daysSince}d` : 'Sin check-in'}
+                          </span>
+                        </div>
+                      )
+                    })()}
                   </td>
                   <td className="px-4 py-3 text-sm">
                     <QuickAddCall
