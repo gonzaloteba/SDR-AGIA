@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { differenceInDays, startOfMonth, getWeekOfMonth } from 'date-fns'
 import { getAdminClient } from '@/lib/supabase/admin'
+import { CHECKIN_GRACE_DAYS } from '@/lib/constants'
 import { logger } from '@/lib/logger'
 
 const log = logger('api:cron:generate-alerts')
@@ -124,7 +125,7 @@ export async function POST(request: NextRequest) {
             ? differenceInDays(now, new Date(lastCheckin))
             : daysSinceStart
 
-          if (daysSinceCheckin >= 8) {
+          if (daysSinceCheckin >= CHECKIN_GRACE_DAYS) {
             alertsToCreate.push({
               client_id: client.id,
               type: 'missed_checkin',

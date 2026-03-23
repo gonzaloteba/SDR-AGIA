@@ -2,24 +2,24 @@ import { calculateHealthScore, getDaysRemaining } from '@/lib/health-score'
 
 describe('calculateHealthScore', () => {
   it('returns green when no issues', () => {
-    expect(calculateHealthScore({ unresolvedAlerts: 0, pendingCoachActions: 0, hasWeeklyCheckin: true })).toBe('green')
+    expect(calculateHealthScore({ unresolvedAlerts: 0, pendingCoachActions: 0, hasRecentCheckin: true })).toBe('green')
   })
 
   it('returns red when there are unresolved alerts', () => {
-    expect(calculateHealthScore({ unresolvedAlerts: 1, pendingCoachActions: 0, hasWeeklyCheckin: true })).toBe('red')
-    expect(calculateHealthScore({ unresolvedAlerts: 5, pendingCoachActions: 0, hasWeeklyCheckin: true })).toBe('red')
+    expect(calculateHealthScore({ unresolvedAlerts: 1, pendingCoachActions: 0, hasRecentCheckin: true })).toBe('red')
+    expect(calculateHealthScore({ unresolvedAlerts: 5, pendingCoachActions: 0, hasRecentCheckin: true })).toBe('red')
   })
 
   it('returns red when there are pending coach actions', () => {
-    expect(calculateHealthScore({ unresolvedAlerts: 0, pendingCoachActions: 1, hasWeeklyCheckin: true })).toBe('red')
+    expect(calculateHealthScore({ unresolvedAlerts: 0, pendingCoachActions: 1, hasRecentCheckin: true })).toBe('red')
   })
 
-  it('returns red when missing weekly checkin', () => {
-    expect(calculateHealthScore({ unresolvedAlerts: 0, pendingCoachActions: 0, hasWeeklyCheckin: false })).toBe('red')
+  it('returns red when missing recent checkin', () => {
+    expect(calculateHealthScore({ unresolvedAlerts: 0, pendingCoachActions: 0, hasRecentCheckin: false })).toBe('red')
   })
 
   it('returns red when multiple issues', () => {
-    expect(calculateHealthScore({ unresolvedAlerts: 2, pendingCoachActions: 1, hasWeeklyCheckin: false })).toBe('red')
+    expect(calculateHealthScore({ unresolvedAlerts: 2, pendingCoachActions: 1, hasRecentCheckin: false })).toBe('red')
   })
 })
 

@@ -83,8 +83,8 @@ export function ClientTable({ clients }: ClientTableProps) {
       (badgeFilter === 'success_case' && client.is_success_case)
     const matchesCheckin =
       checkinFilter === 'all' ||
-      (checkinFilter === 'yes' && client.has_weekly_checkin) ||
-      (checkinFilter === 'no' && !client.has_weekly_checkin)
+      (checkinFilter === 'yes' && client.has_recent_checkin) ||
+      (checkinFilter === 'no' && !client.has_recent_checkin)
     return matchesSearch && matchesStatus && matchesHealth && matchesBadge && matchesCheckin
   }), [clients, deferredSearch, statusFilter, healthFilter, badgeFilter, checkinFilter])
 
@@ -135,7 +135,7 @@ export function ClientTable({ clients }: ClientTableProps) {
           onChange={(e) => setCheckinFilter(e.target.value)}
           className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
         >
-          <option value="all">Check-in Semanal</option>
+          <option value="all">Check-in Quincenal</option>
           <option value="yes">Sí</option>
           <option value="no">No</option>
         </select>
@@ -158,7 +158,7 @@ export function ClientTable({ clients }: ClientTableProps) {
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Estado</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Fase</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Días restantes</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Check-in Semanal</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Check-in Quincenal</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Llamadas/mes</th>
             </tr>
           </thead>
@@ -250,11 +250,11 @@ export function ClientTable({ clients }: ClientTableProps) {
                   <td className="px-4 py-3 text-sm">
                     <span className={cn(
                       'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
-                      client.has_weekly_checkin
+                      client.has_recent_checkin
                         ? 'bg-green-100 text-green-800'
                         : 'bg-red-100 text-red-800'
                     )}>
-                      {client.has_weekly_checkin ? 'Sí' : 'No'}
+                      {client.has_recent_checkin ? 'Sí' : 'No'}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-sm">

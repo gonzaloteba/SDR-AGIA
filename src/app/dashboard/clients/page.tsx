@@ -5,8 +5,8 @@ import { Header } from '@/components/layout/header'
 import { ClientTable } from '@/components/clients/client-table'
 import { CoachSelector } from '@/components/dashboard/coach-selector'
 import { calculateHealthScore, getDaysRemaining } from '@/lib/health-score'
-import { startOfMonth, startOfWeek, endOfWeek, differenceInDays } from 'date-fns'
-import { PHASE_ALERT_DAYS_BEFORE } from '@/lib/constants'
+import { startOfMonth, differenceInDays } from 'date-fns'
+import { PHASE_ALERT_DAYS_BEFORE, CHECKIN_GRACE_DAYS } from '@/lib/constants'
 import { getCurrentCoach, isAdmin } from '@/lib/auth'
 import type { ClientWithHealth } from '@/lib/types'
 
@@ -21,8 +21,6 @@ export default async function ClientsPage({ searchParams }: Props) {
   const { coach: selectedCoachId } = await searchParams
   const now = new Date()
   const monthStart = startOfMonth(now).toISOString()
-  const weekStart = startOfWeek(now, { weekStartsOn: 1 }).toISOString()
-  const weekEnd = endOfWeek(now, { weekStartsOn: 1 }).toISOString()
 
   // Fetch coach list for admin selector
   let coaches: { id: string; full_name: string }[] = []
@@ -70,7 +68,6 @@ export default async function ClientsPage({ searchParams }: Props) {
     { data: callsThisMonth },
     { data: unresolvedAlerts },
     { data: pendingCoachActions },
-    { data: weeklyCheckins },
   ] = await Promise.all([
     safe(clientsQuery),
     safe(supabase
@@ -90,11 +87,6 @@ export default async function ClientsPage({ searchParams }: Props) {
       .select('client_id')
       .not('coach_actions', 'is', null)
       .eq('coach_actions_completed', false)),
-    safe(supabase
-      .from('check_ins')
-      .select('client_id')
-      .gte('submitted_at', weekStart)
-      .lte('submitted_at', weekEnd)),
   ])
 
   // Build lookup maps
@@ -122,9 +114,6 @@ export default async function ClientsPage({ searchParams }: Props) {
     coachActionsCountByClient.set(action.client_id, (coachActionsCountByClient.get(action.client_id) || 0) + 1)
   }
 
-  // Build set of clients who checked in this week
-  const weeklyCheckinClientIds = new Set((weeklyCheckins || []).map(c => c.client_id))
-
   // Enrich clients with health score
   const today = new Date()
   const enrichedClients: ClientWithHealth[] = (clients || []).map((client) => {
@@ -132,7 +121,9 @@ export default async function ClientsPage({ searchParams }: Props) {
     const callsCount = callCountByClient.get(client.id) || 0
     const alertCount = alertCountByClient.get(client.id) || 0
     const pendingActions = coachActionsCountByClient.get(client.id) || 0
-    const hasWeeklyCheckin = weeklyCheckinClientIds.has(client.id)
+    const hasRecentCheckin = lastCheckinDate
+      ? differenceInDays(today, new Date(lastCheckinDate)) < CHECKIN_GRACE_DAYS
+      : false
 
     let isBirthdayToday = false
     if (client.birth_date) {
@@ -152,11 +143,11 @@ export default async function ClientsPage({ searchParams }: Props) {
       health_score: calculateHealthScore({
         unresolvedAlerts: alertCount,
         pendingCoachActions: pendingActions,
-        hasWeeklyCheckin,
+        hasRecentCheckin,
         hasPendingPhaseChange,
       }),
       last_checkin_date: lastCheckinDate,
-      has_weekly_checkin: hasWeeklyCheckin,
+      has_recent_checkin: hasRecentCheckin,
       calls_this_month: callsCount,
       days_remaining: getDaysRemaining(client.end_date),
       pending_coach_actions: pendingActions,

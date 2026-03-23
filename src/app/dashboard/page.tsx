@@ -7,8 +7,9 @@ import { ClientHealthChart } from '@/components/dashboard/client-health-chart'
 import { PhaseDistribution } from '@/components/dashboard/phase-distribution'
 import { CoachSelector } from '@/components/dashboard/coach-selector'
 import { UpcomingCalls } from '@/components/dashboard/upcoming-calls'
-import { startOfWeek, endOfWeek, startOfMonth } from 'date-fns'
+import { startOfMonth, differenceInDays } from 'date-fns'
 import { getCurrentCoach, isAdmin } from '@/lib/auth'
+import { CHECKIN_GRACE_DAYS } from '@/lib/constants'
 import type { NutritionPhase } from '@/lib/types'
 
 interface Props {
@@ -21,8 +22,6 @@ export default async function DashboardPage({ searchParams }: Props) {
   const admin = coach && isAdmin(coach)
   const { coach: selectedCoachId } = await searchParams
   const now = new Date()
-  const weekStart = startOfWeek(now, { weekStartsOn: 1 }).toISOString()
-  const weekEnd = endOfWeek(now, { weekStartsOn: 1 }).toISOString()
   const monthStart = startOfMonth(now).toISOString()
 
   // Fetch coach list for admin selector
@@ -88,9 +87,8 @@ export default async function DashboardPage({ searchParams }: Props) {
     safe(clientsQuery),
     safe(supabase
       .from('check_ins')
-      .select('client_id')
-      .gte('submitted_at', weekStart)
-      .lte('submitted_at', weekEnd)),
+      .select('client_id, submitted_at')
+      .order('submitted_at', { ascending: false })),
     safe(supabase
       .from('calls')
       .select('client_id')
@@ -109,10 +107,18 @@ export default async function DashboardPage({ searchParams }: Props) {
   ])
 
   const clients = clientsResult.data
-  const checkinsThisWeek = checkinsResult.data
+  const allCheckins = checkinsResult.data
   const pendingAlerts = alertsResult.data
   const allClients = allClientsResult.data
   const pendingCoachActions = coachActionsResult.data
+
+  // Build last check-in date per client
+  const lastCheckinByClient = new Map<string, string>()
+  for (const ci of allCheckins || []) {
+    if (!lastCheckinByClient.has(ci.client_id)) {
+      lastCheckinByClient.set(ci.client_id, ci.submitted_at)
+    }
+  }
 
   // Build upcoming calls with client names
   const rawUpcomingCalls = (upcomingCallsResult.data || []) as {
@@ -126,7 +132,15 @@ export default async function DashboardPage({ searchParams }: Props) {
 
   const activeClients = clients || []
   const activeClientIds = new Set(activeClients.map(c => c.id))
-  const checkinClientIds = new Set((checkinsThisWeek || []).map((c) => c.client_id))
+
+  // Check-in is "recent" if last submission was within CHECKIN_GRACE_DAYS (15 days)
+  const recentCheckinClientIds = new Set<string>()
+  for (const [clientId, submittedAt] of lastCheckinByClient) {
+    const daysSince = differenceInDays(now, new Date(submittedAt))
+    if (daysSince < CHECKIN_GRACE_DAYS) {
+      recentCheckinClientIds.add(clientId)
+    }
+  }
 
   // Count unresolved alerts only for this coach's clients
   const filteredAlerts = (pendingAlerts || []).filter(a => activeClientIds.has(a.client_id))
@@ -142,7 +156,7 @@ export default async function DashboardPage({ searchParams }: Props) {
   const phaseDistribution: Record<NutritionPhase, number> = { 1: 0, 2: 0, 3: 0 }
 
   for (const client of activeClients) {
-    const hasIssue = alertClientIds.has(client.id) || coachActionClientIds.has(client.id) || !checkinClientIds.has(client.id)
+    const hasIssue = alertClientIds.has(client.id) || coachActionClientIds.has(client.id) || !recentCheckinClientIds.has(client.id)
     if (hasIssue) red++
     else green++
 
@@ -179,7 +193,7 @@ export default async function DashboardPage({ searchParams }: Props) {
         )}
         <KpiCards
           activeClients={activeClients.length}
-          checkinsThisWeek={checkinClientIds.size}
+          checkinsOnTime={recentCheckinClientIds.size}
           expectedCheckins={activeClients.length}
           retentionRate={retentionRate}
         />

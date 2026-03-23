@@ -38,19 +38,19 @@ function KpiCard({ title, value, subtitle, icon, trend }: KpiCardProps) {
 
 interface KpiCardsProps {
   activeClients: number
-  checkinsThisWeek: number
+  checkinsOnTime: number
   expectedCheckins: number
   retentionRate: number
 }
 
 export function KpiCards({
   activeClients,
-  checkinsThisWeek,
+  checkinsOnTime,
   expectedCheckins,
   retentionRate,
 }: KpiCardsProps) {
   const checkinRate = expectedCheckins > 0
-    ? Math.round((checkinsThisWeek / expectedCheckins) * 100)
+    ? Math.round((checkinsOnTime / expectedCheckins) * 100)
     : 0
 
   return (
@@ -61,8 +61,8 @@ export function KpiCards({
         icon={<Users className="h-4 w-4 text-muted-foreground" />}
       />
       <KpiCard
-        title="Check-ins esta Semana"
-        value={`${checkinsThisWeek}/${expectedCheckins}`}
+        title="Check-ins al día"
+        value={`${checkinsOnTime}/${expectedCheckins}`}
         subtitle={`${checkinRate}% completado`}
         icon={<ClipboardCheck className="h-4 w-4 text-muted-foreground" />}
       />

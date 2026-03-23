@@ -4,10 +4,10 @@ import type { HealthScore } from './types'
 export function calculateHealthScore(opts: {
   unresolvedAlerts: number
   pendingCoachActions: number
-  hasWeeklyCheckin: boolean
+  hasRecentCheckin: boolean
   hasPendingPhaseChange?: boolean
 }): HealthScore {
-  if (opts.unresolvedAlerts > 0 || opts.pendingCoachActions > 0 || !opts.hasWeeklyCheckin || opts.hasPendingPhaseChange) {
+  if (opts.unresolvedAlerts > 0 || opts.pendingCoachActions > 0 || !opts.hasRecentCheckin || opts.hasPendingPhaseChange) {
     return 'red'
   }
   return 'green'
