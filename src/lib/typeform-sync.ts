@@ -36,8 +36,8 @@ interface TypeformResponse {
 }
 
 export interface TypeformSyncResults {
-  audit: { fetched: number; created: number; updated: number; skipped: number; initial_checkins_created: number; errors: string[] }
-  checkin: { fetched: number; inserted: number; skipped: number; clients_created: number; auto_created_clients: string[]; errors: string[] }
+  audit: { fetched: number; created: number; updated: number; skipped: number; initial_checkins_created: number; errors: string[]; debug: string[] }
+  checkin: { fetched: number; inserted: number; skipped: number; clients_created: number; auto_created_clients: string[]; errors: string[]; debug: string[] }
 }
 
 export interface TypeformSyncResponse {
@@ -94,8 +94,8 @@ export async function runTypeformSync(): Promise<TypeformSyncResponse> {
 
   const supabase = getAdminClient()
   const results: TypeformSyncResults = {
-    audit: { fetched: 0, created: 0, updated: 0, skipped: 0, initial_checkins_created: 0, errors: [] },
-    checkin: { fetched: 0, inserted: 0, skipped: 0, clients_created: 0, auto_created_clients: [], errors: [] },
+    audit: { fetched: 0, created: 0, updated: 0, skipped: 0, initial_checkins_created: 0, errors: [], debug: [] },
+    checkin: { fetched: 0, inserted: 0, skipped: 0, clients_created: 0, auto_created_clients: [], errors: [], debug: [] },
   }
 
   // Pre-load all clients once to avoid N+1 queries in loops
@@ -121,11 +121,13 @@ export async function runTypeformSync(): Promise<TypeformSyncResponse> {
       const firstName = answerMap.get(AUDIT_FIRST_NAME_REF) as string | undefined
       const lastName = answerMap.get(AUDIT_LAST_NAME_REF) as string | undefined
       if (!firstName || !lastName) {
+        results.audit.debug.push(`Skipped response ${response.token}: no name (firstName=${JSON.stringify(firstName)}, lastName=${JSON.stringify(lastName)}, fieldIds in response: ${Array.from(answerMap.keys()).join(', ')})`)
         results.audit.skipped++
         continue
       }
 
       const client = findClientInList(clientList, firstName, lastName)
+      results.audit.debug.push(`"${firstName} ${lastName}" → ${client ? `matched to existing client ${client.id}` : 'NO MATCH → will create new client'}`)
 
       if (!client) {
         const startDate = (submittedAt || new Date().toISOString()).split('T')[0]

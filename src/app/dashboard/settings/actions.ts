@@ -141,6 +141,7 @@ export async function fixOrphanCalls(): Promise<{ success: boolean; message: str
 export async function syncTypeformNow(): Promise<{
   success: boolean
   message: string
+  debug?: string[]
 }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -154,10 +155,21 @@ export async function syncTypeformNow(): Promise<{
     const parts: string[] = []
     if (r?.audit?.created > 0) parts.push(`${r.audit.created} cliente(s) nuevo(s)`)
     if (r?.audit?.updated > 0) parts.push(`${r.audit.updated} auditoría(s) actualizada(s)`)
+    if (r?.audit?.skipped > 0) parts.push(`${r.audit.skipped} auditoría(s) sin nombre`)
     if (r?.checkin?.inserted > 0) parts.push(`${r.checkin.inserted} check-in(s) sincronizado(s)`)
+    if (r?.checkin?.skipped > 0) parts.push(`${r.checkin.skipped} check-in(s) ya existente(s)`)
     if (parts.length === 0) parts.push('No hay datos nuevos')
 
-    return { success: true, message: parts.join(', ') }
+    const debug = [
+      `Auditorías: ${r.audit.fetched} fetched, ${r.audit.created} created, ${r.audit.updated} updated, ${r.audit.skipped} skipped`,
+      `Check-ins: ${r.checkin.fetched} fetched, ${r.checkin.inserted} inserted, ${r.checkin.skipped} skipped`,
+      ...(r.audit.errors.length > 0 ? [`Errores audit: ${r.audit.errors.join('; ')}`] : []),
+      ...(r.checkin.errors.length > 0 ? [`Errores check-in: ${r.checkin.errors.join('; ')}`] : []),
+      ...r.audit.debug,
+      ...r.checkin.debug,
+    ]
+
+    return { success: true, message: parts.join(', '), debug }
   } catch (err) {
     log.error('Manual Typeform sync failed', { error: (err as Error).message })
     return { success: false, message: `Error: ${(err as Error).message}` }
@@ -170,6 +182,8 @@ export async function syncCalendlyNow(): Promise<{
   synced?: number
   skipped?: number
   unmatched?: number
+  unmatchedNames?: string[]
+  debug?: string[]
 }> {
   // Verify authenticated user
   const supabase = await createClient()
@@ -219,9 +233,18 @@ export async function syncCalendlyNow(): Promise<{
       (existingCalls || []).map(c => c.calendly_event_uri)
     )
 
+    // Also load client emails for email-based matching fallback
+    const { data: clientsWithEmail } = await adminClient
+      .from('clients')
+      .select('id, first_name, last_name, email')
+
     let synced = 0
     let skipped = 0
     let unmatched = 0
+    const unmatchedNames: string[] = []
+    const debug: string[] = []
+
+    debug.push(`Clientes en DB: ${(clients || []).map(c => `${c.first_name} ${c.last_name}`).join(', ')}`)
 
     for (const event of events) {
       if (existingUriSet.has(event.uri)) {
@@ -243,13 +266,29 @@ export async function syncCalendlyNow(): Promise<{
       const firstName = nameParts[0] || ''
       const lastName = nameParts.slice(1).join(' ') || ''
 
-      const matchedClient = findClientInList(clients || [], firstName, lastName)
+      debug.push(`Calendly invitee: "${activeInvitee.name}" (email: ${activeInvitee.email}) → firstName="${firstName}", lastName="${lastName}"`)
+
+      // Try name matching first
+      let matchedClient = findClientInList(clients || [], firstName, lastName)
+
+      // Fallback: try matching by email
+      if (!matchedClient && activeInvitee.email && clientsWithEmail) {
+        const emailLower = activeInvitee.email.toLowerCase().trim()
+        const emailMatch = clientsWithEmail.find(
+          c => c.email && c.email.toLowerCase().trim() === emailLower
+        )
+        if (emailMatch) {
+          matchedClient = { id: emailMatch.id }
+          debug.push(`  → Matched by email to ${emailMatch.first_name} ${emailMatch.last_name}`)
+        }
+      }
 
       if (!matchedClient) {
         log.warn('Could not match Calendly invitee', {
           inviteeName: activeInvitee.name,
           inviteeEmail: activeInvitee.email,
         })
+        unmatchedNames.push(`${activeInvitee.name} (${activeInvitee.email})`)
         unmatched++
         continue
       }
@@ -287,14 +326,17 @@ export async function syncCalendlyNow(): Promise<{
     if (synced > 0) parts.push(`${synced} llamada(s) nueva(s) sincronizada(s)`)
     if (skipped > 0) parts.push(`${skipped} ya existente(s)`)
     if (unmatched > 0) parts.push(`${unmatched} sin cliente asociado`)
+    if (unmatchedNames.length > 0) parts.push(`No encontrados: ${unmatchedNames.join(', ')}`)
     if (parts.length === 0) parts.push('No hay llamadas nuevas para sincronizar')
 
     return {
       success: true,
-      message: parts.join(', ') + ` (${events.length} evento(s) en Calendly)`,
+      message: parts.join('. ') + ` (${events.length} evento(s) en Calendly)`,
       synced,
       skipped,
       unmatched,
+      unmatchedNames,
+      debug,
     }
   } catch (err) {
     log.error('Manual Calendly sync failed', { error: (err as Error).message })

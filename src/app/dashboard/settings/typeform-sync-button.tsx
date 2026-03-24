@@ -1,16 +1,24 @@
 'use client'
 
 import { useState } from 'react'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw, ChevronDown, ChevronUp } from 'lucide-react'
 import { syncTypeformNow } from './actions'
+
+interface SyncResult {
+  message: string
+  success: boolean
+  debug?: string[]
+}
 
 export function TypeformSyncButton() {
   const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<{ message: string; success: boolean } | null>(null)
+  const [result, setResult] = useState<SyncResult | null>(null)
+  const [showDebug, setShowDebug] = useState(false)
 
   async function handleSync() {
     setLoading(true)
     setResult(null)
+    setShowDebug(false)
     try {
       const res = await syncTypeformNow()
       setResult(res)
@@ -32,9 +40,25 @@ export function TypeformSyncButton() {
         {loading ? 'Sincronizando...' : 'Sincronizar ahora'}
       </button>
       {result && (
-        <p className={`text-xs ${result.success ? 'text-muted-foreground' : 'text-red-600'}`}>
-          {result.message}
-        </p>
+        <div>
+          <p className={`text-xs ${result.success ? 'text-muted-foreground' : 'text-red-600'}`}>
+            {result.message}
+          </p>
+          {result.debug && result.debug.length > 0 && (
+            <button
+              onClick={() => setShowDebug(!showDebug)}
+              className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+            >
+              {showDebug ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              {showDebug ? 'Ocultar detalles' : 'Ver detalles'}
+            </button>
+          )}
+          {showDebug && result.debug && (
+            <div className="mt-2 rounded-md bg-muted p-3 text-xs font-mono whitespace-pre-wrap max-h-60 overflow-y-auto">
+              {result.debug.join('\n')}
+            </div>
+          )}
+        </div>
       )}
     </div>
   )
