@@ -159,6 +159,26 @@ export function findClientInList(
         return { id: client.id }
       }
     }
+
+    // 2c. Contained-name matching (handles partial names)
+    // e.g. search "Eduardo" + "Guerrero" matches DB "Luis Eduardo" + "Guerrero"
+    if (normLn === cLn || cLn.startsWith(normLn) || normLn.startsWith(cLn)) {
+      // Last names match — check if first name is contained within the other
+      const searchFnWords = normFn.split(/\s+/)
+      const cFnWords = cFn.split(/\s+/)
+      const fnContained =
+        searchFnWords.every(w => cFnWords.includes(w)) ||
+        cFnWords.every(w => searchFnWords.includes(w))
+      if (fnContained) {
+        log.info('Client matched by contained name', {
+          clientId: client.id,
+          searchedName: `${fn} ${ln}`,
+          matchedName: `${client.first_name} ${client.last_name}`,
+          matchType: 'contained-name',
+        })
+        return { id: client.id }
+      }
+    }
   }
 
   return null

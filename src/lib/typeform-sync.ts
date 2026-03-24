@@ -108,8 +108,23 @@ export async function runTypeformSync(): Promise<TypeformSyncResponse> {
   const auditResponses = await fetchAllResponses(AUDIT_FORM_ID, typeformToken)
   results.audit.fetched = auditResponses.length
 
+  // Pre-load already-processed response IDs to skip duplicates
+  const { data: processedAuditRows } = await supabase
+    .from('clients')
+    .select('onboarding_response_id')
+    .not('onboarding_response_id', 'is', null)
+  const processedAuditIds = new Set(
+    (processedAuditRows || []).map(r => r.onboarding_response_id).filter(Boolean)
+  )
+
   for (const response of auditResponses) {
     try {
+      // Skip already-processed responses
+      if (processedAuditIds.has(response.token)) {
+        results.audit.skipped++
+        continue
+      }
+
       const answers = response.answers || []
       const submittedAt = response.submitted_at || response.landed_at || new Date().toISOString()
       const answerMap = new Map<string, unknown>()
@@ -294,32 +309,13 @@ export async function runTypeformSync(): Promise<TypeformSyncResponse> {
         continue
       }
 
-      let client = findClientInList(clientList, firstName, lastName)
+      const client = findClientInList(clientList, firstName, lastName)
       if (!client) {
-        const checkinStartDate = (submittedAt || new Date().toISOString()).split('T')[0]
-        const checkinEndDate = calculateEndDate(checkinStartDate, 90)
-        const { data: newClient, error: createErr } = await supabase
-          .from('clients')
-          .insert({
-            first_name: firstName.trim(),
-            last_name: lastName.trim(),
-            start_date: checkinStartDate,
-            end_date: checkinEndDate,
-            renewal_date: checkinEndDate,
-            plan_type: '3_months',
-            coach_id: defaultCoachId,
-          })
-          .select('id')
-          .single()
-
-        if (createErr || !newClient) {
-          results.checkin.errors.push(`Auto-create failed for ${firstName} ${lastName}: ${createErr?.message}`)
-          continue
-        }
-        client = newClient
-        clientList = [...clientList, { id: newClient.id, first_name: firstName.trim(), last_name: lastName.trim() }]
-        results.checkin.clients_created++
-        results.checkin.auto_created_clients.push(`${firstName} ${lastName}`)
+        // Skip check-ins from unknown clients instead of auto-creating
+        // Clients should only be created from the Auditoría Inicial form
+        results.checkin.debug.push(`Skipped check-in for unknown client "${firstName} ${lastName}" — no matching client found`)
+        results.checkin.skipped++
+        continue
       }
 
       const checkInData = buildCheckInData(answerMap, client.id, submittedAt, responseId)
