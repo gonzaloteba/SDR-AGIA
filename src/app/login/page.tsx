@@ -1,8 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+
+const MAX_ATTEMPTS = 5
+const LOCKOUT_DURATION_MS = 30_000 // 30 seconds
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -11,10 +14,31 @@ export default function LoginPage() {
   const [success, setSuccess] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [showForgot, setShowForgot] = useState(false)
+  const attemptsRef = useRef(0)
+  const lockoutUntilRef = useRef<number>(0)
   const router = useRouter()
+
+  function checkLockout(): boolean {
+    if (lockoutUntilRef.current > Date.now()) {
+      const seconds = Math.ceil((lockoutUntilRef.current - Date.now()) / 1000)
+      setError(`Demasiados intentos. Espera ${seconds} segundos.`)
+      return true
+    }
+    return false
+  }
+
+  function recordFailedAttempt() {
+    attemptsRef.current++
+    if (attemptsRef.current >= MAX_ATTEMPTS) {
+      lockoutUntilRef.current = Date.now() + LOCKOUT_DURATION_MS
+      attemptsRef.current = 0
+    }
+  }
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
+    if (checkLockout()) return
+
     setLoading(true)
     setError(null)
 
@@ -26,6 +50,7 @@ export default function LoginPage() {
       })
 
       if (error) {
+        recordFailedAttempt()
         if (error.message.includes('Invalid login')) {
           setError('Credenciales inválidas. Intenta de nuevo.')
         } else if (error.message.includes('Email not confirmed')) {
@@ -51,6 +76,8 @@ export default function LoginPage() {
       setError('Introduce tu email primero.')
       return
     }
+    if (checkLockout()) return
+
     setLoading(true)
     setError(null)
     setSuccess(null)
@@ -62,13 +89,13 @@ export default function LoginPage() {
       })
 
       if (error) {
-        console.error('Reset password error:', error.message, error.status)
+        recordFailedAttempt()
         if (error.message.includes('rate') || error.message.includes('limit')) {
           setError('Demasiados intentos. Espera unos minutos.')
         } else if (error.message.includes('not found') || error.message.includes('no user')) {
           setError('No se encontró una cuenta con ese email.')
         } else {
-          setError(`Error: ${error.message}`)
+          setError('Error al enviar el email. Intenta de nuevo.')
         }
       } else {
         setSuccess('Te hemos enviado un email para restablecer tu contraseña.')

@@ -3,6 +3,7 @@ import { logger } from '@/lib/logger'
 const log = logger('calendly')
 
 const CALENDLY_API_BASE = 'https://api.calendly.com'
+const CALENDLY_TIMEOUT_MS = 15_000 // 15 second timeout
 
 interface CalendlyEvent {
   uri: string
@@ -41,20 +42,35 @@ function getToken(): string {
 
 async function calendlyFetch<T>(path: string): Promise<T> {
   const url = path.startsWith('http') ? path : `${CALENDLY_API_BASE}${path}`
-  const res = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${getToken()}`,
-      'Content-Type': 'application/json',
-    },
-  })
 
-  if (!res.ok) {
-    const body = await res.text()
-    log.error('Calendly API error', { status: res.status, path, body })
-    throw new Error(`Calendly API ${res.status}: ${body}`)
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), CALENDLY_TIMEOUT_MS)
+
+  try {
+    const res = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${getToken()}`,
+        'Content-Type': 'application/json',
+      },
+      signal: controller.signal,
+    })
+
+    if (!res.ok) {
+      const body = await res.text()
+      log.error('Calendly API error', { status: res.status, path, body })
+      throw new Error(`Calendly API ${res.status}: ${body}`)
+    }
+
+    return res.json() as Promise<T>
+  } catch (err) {
+    if ((err as Error).name === 'AbortError') {
+      log.error('Calendly API timeout', { path, timeoutMs: CALENDLY_TIMEOUT_MS })
+      throw new Error(`Calendly API timeout after ${CALENDLY_TIMEOUT_MS}ms: ${path}`)
+    }
+    throw err
+  } finally {
+    clearTimeout(timeoutId)
   }
-
-  return res.json() as Promise<T>
 }
 
 /** Get the current user's URI */

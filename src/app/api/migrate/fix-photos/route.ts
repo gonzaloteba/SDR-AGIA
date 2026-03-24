@@ -10,6 +10,11 @@ import { fixBrokenPhotoUrls } from '@/lib/photo-storage'
  */
 export async function POST(request: NextRequest) {
   try {
+    // Block migrations in production unless explicitly allowed
+    if (process.env.NODE_ENV === 'production' && !process.env.ALLOW_MIGRATIONS) {
+      return NextResponse.json({ error: 'Migrations disabled in production' }, { status: 403 })
+    }
+
     // Auth check — only accept CRON_SECRET via Authorization header
     const authHeader = request.headers.get('authorization')
     const secret = authHeader?.replace('Bearer ', '')

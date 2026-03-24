@@ -4,6 +4,8 @@ import { getCurrentUser, getScheduledEvents, getEventInvitees, extractMeetLink }
 import { findClientInList } from '@/lib/typeform-helpers'
 import { logger } from '@/lib/logger'
 
+export const maxDuration = 60
+
 const log = logger('api:calendly:sync')
 
 export async function POST(request: NextRequest) {
@@ -169,7 +171,7 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     log.error('Calendly sync failed', { error: (err as Error).message })
     return NextResponse.json(
-      { error: 'Internal server error', detail: (err as Error).message },
+      { error: 'Internal server error' },
       { status: 500 }
     )
   }

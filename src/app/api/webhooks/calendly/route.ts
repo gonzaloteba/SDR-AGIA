@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createHmac } from 'crypto'
 import { getAdminClient } from '@/lib/supabase/admin'
 import { getEventInvitees, extractMeetLink } from '@/lib/calendly'
 import { findClientInList } from '@/lib/typeform-helpers'
+import { escapeLikePattern } from '@/lib/api-auth'
 import { logger } from '@/lib/logger'
 
 const log = logger('api:webhooks:calendly')
@@ -22,9 +24,75 @@ interface CalendlyWebhookPayload {
   }
 }
 
+/**
+ * Verify Calendly webhook signature (HMAC SHA256).
+ * Returns true if valid or if no signing key is configured (backwards compat).
+ */
+function verifyCalendlySignature(rawBody: string, signatureHeader: string | null): boolean {
+  const signingKey = process.env.CALENDLY_WEBHOOK_SIGNING_KEY
+  if (!signingKey) {
+    // No signing key configured — allow request but log warning
+    log.warn('CALENDLY_WEBHOOK_SIGNING_KEY not configured — webhook signature verification skipped')
+    return true
+  }
+
+  if (!signatureHeader) {
+    log.error('Missing Calendly-Webhook-Signature header')
+    return false
+  }
+
+  // Calendly signature format: "t=<timestamp>,v1=<signature>"
+  const parts: Record<string, string> = {}
+  for (const part of signatureHeader.split(',')) {
+    const [key, ...valueParts] = part.split('=')
+    parts[key] = valueParts.join('=')
+  }
+
+  const timestamp = parts['t']
+  const v1Signature = parts['v1']
+
+  if (!timestamp || !v1Signature) {
+    log.error('Invalid Calendly-Webhook-Signature format', { signatureHeader })
+    return false
+  }
+
+  // Verify signature: HMAC SHA256 of "timestamp.body"
+  const expectedSig = createHmac('sha256', signingKey)
+    .update(timestamp + '.' + rawBody)
+    .digest('hex')
+
+  if (v1Signature !== expectedSig) {
+    log.error('Calendly webhook signature mismatch')
+    return false
+  }
+
+  // Optional: reject old timestamps (5 minute tolerance)
+  const timestampMs = parseInt(timestamp, 10) * 1000
+  if (!isNaN(timestampMs) && Math.abs(Date.now() - timestampMs) > 5 * 60 * 1000) {
+    log.warn('Calendly webhook timestamp too old', { timestamp })
+    return false
+  }
+
+  return true
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const body = (await request.json()) as CalendlyWebhookPayload
+    const rawBody = await request.text()
+
+    // Verify webhook signature
+    const signatureHeader = request.headers.get('Calendly-Webhook-Signature')
+    if (!verifyCalendlySignature(rawBody, signatureHeader)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    let body: CalendlyWebhookPayload
+    try {
+      body = JSON.parse(rawBody) as CalendlyWebhookPayload
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    }
+
     const { event: eventType, payload } = body
 
     log.info('Calendly webhook received', { eventType, eventUri: payload?.uri })
@@ -144,7 +212,7 @@ export async function POST(request: NextRequest) {
 
       const { data: call } = await supabase
         .from('calls')
-        .select('id')
+        .select('id, client_id')
         .eq('calendly_event_uri', eventUri)
         .limit(1)
         .maybeSingle()
@@ -153,12 +221,15 @@ export async function POST(request: NextRequest) {
         await supabase.from('calls').delete().eq('id', call.id)
         log.info('Deleted canceled Calendly call', { callId: call.id, eventUri })
 
-        // Also resolve any upcoming_call alerts for this
-        await supabase
-          .from('alerts')
-          .update({ is_resolved: true, resolved_at: new Date().toISOString() })
-          .eq('type', 'upcoming_call')
-          .ilike('message', `%${eventUri}%`)
+        // Resolve upcoming_call alerts for this client (safe — uses client_id, not ilike)
+        if (call.client_id) {
+          await supabase
+            .from('alerts')
+            .update({ is_resolved: true, resolved_at: new Date().toISOString() })
+            .eq('client_id', call.client_id)
+            .eq('type', 'upcoming_call')
+            .eq('is_resolved', false)
+        }
       }
 
       return NextResponse.json({ message: 'Canceled event processed' })

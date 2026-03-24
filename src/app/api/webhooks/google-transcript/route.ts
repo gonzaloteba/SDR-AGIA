@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
 
       if (updateError) {
         return NextResponse.json(
-          { error: 'Failed to update call', detail: updateError.message },
+          { error: 'Failed to update call' },
           { status: 500 }
         )
       }
@@ -156,7 +156,7 @@ export async function POST(request: NextRequest) {
 
       if (updateError) {
         return NextResponse.json(
-          { error: 'Failed to update scheduled call', detail: updateError.message },
+          { error: 'Failed to update scheduled call' },
           { status: 500 }
         )
       }
@@ -181,8 +181,9 @@ export async function POST(request: NextRequest) {
           .eq('client_id', clientId)
           .eq('type', 'upcoming_call')
           .eq('is_resolved', false)
-      } catch {
+      } catch (e) {
         // Alert resolution is non-critical
+        console.warn('Alert resolution failed (non-critical):', (e as Error).message)
       }
 
       return NextResponse.json({
@@ -214,7 +215,7 @@ export async function POST(request: NextRequest) {
 
     if (insertError) {
       return NextResponse.json(
-        { error: 'Failed to create call', detail: insertError.message },
+        { error: 'Failed to create call' },
         { status: 500 }
       )
     }
@@ -240,8 +241,9 @@ export async function POST(request: NextRequest) {
           .eq('client_id', clientId)
           .eq('type', 'upcoming_call')
           .eq('is_resolved', false)
-      } catch {
+      } catch (e) {
         // Alert resolution is non-critical
+        console.warn('Alert resolution failed (non-critical):', (e as Error).message)
       }
     }
 
@@ -253,8 +255,10 @@ export async function POST(request: NextRequest) {
       coach_actions_generated: !!coachActions,
     })
   } catch (error) {
+    const { logger } = await import('@/lib/logger')
+    logger('api:webhooks:google-transcript').error('Google transcript webhook failed', { error: (error as Error).message })
     return NextResponse.json(
-      { error: 'Internal server error', detail: (error as Error).message },
+      { error: 'Internal server error' },
       { status: 500 }
     )
   }

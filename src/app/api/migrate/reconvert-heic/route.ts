@@ -13,6 +13,11 @@ export const maxDuration = 120
  */
 export async function POST(request: NextRequest) {
   try {
+    // Block migrations in production unless explicitly allowed
+    if (process.env.NODE_ENV === 'production' && !process.env.ALLOW_MIGRATIONS) {
+      return NextResponse.json({ error: 'Migrations disabled in production' }, { status: 403 })
+    }
+
     const authHeader = request.headers.get('authorization')
     const secret = authHeader?.replace('Bearer ', '')
     if (!secret || secret !== process.env.CRON_SECRET) {
@@ -24,8 +29,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, results })
   } catch (e) {
+    const { logger } = await import('@/lib/logger')
+    logger('api:migrate:reconvert-heic').error('Reconvert HEIC error', { error: (e as Error).message })
     return NextResponse.json(
-      { error: 'Internal server error', message: (e as Error).message },
+      { error: 'Internal server error' },
       { status: 500 }
     )
   }

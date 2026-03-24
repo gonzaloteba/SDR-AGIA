@@ -1,5 +1,6 @@
 import { getAdminClient } from '@/lib/supabase/admin'
 import { getDefaultCoachId } from '@/lib/auth'
+import { logger } from '@/lib/logger'
 import {
   CHECKIN_FORM_ID,
   AUDIT_FORM_ID,
@@ -16,6 +17,8 @@ import {
   type TypeformAnswer,
 } from '@/lib/typeform-helpers'
 import { persistPhoto, persistPhotos, fixBrokenPhotoUrls } from '@/lib/photo-storage'
+
+const log = logger('typeform-sync')
 
 const TYPEFORM_API_BASE = 'https://api.typeform.com'
 
@@ -173,7 +176,7 @@ export async function runTypeformSync(): Promise<TypeformSyncResponse> {
               persistedPhotoUrl = await persistPhoto(supabase, photoUrl, newClient.id, 'initial')
               await supabase.from('clients').update({ initial_photo_url: persistedPhotoUrl }).eq('id', newClient.id)
             }
-          } catch { /* non-critical */ }
+          } catch (e) { log.warn('Photo persistence failed for new client', { clientId: newClient.id, error: (e as Error).message }) }
 
           try {
             const auditResponseId = `audit-${response.token}`
@@ -203,7 +206,7 @@ export async function runTypeformSync(): Promise<TypeformSyncResponse> {
               await supabase.from('check_ins').insert(checkInData)
               results.audit.initial_checkins_created++
             }
-          } catch { /* non-critical */ }
+          } catch (e) { log.warn('Initial check-in creation failed for new client', { error: (e as Error).message }) }
         }
       } else {
         const updateData: Record<string, unknown> = { onboarding_submitted_at: submittedAt, onboarding_response_id: response.token }
@@ -233,7 +236,7 @@ export async function runTypeformSync(): Promise<TypeformSyncResponse> {
             persistedPhotoUrl = await persistPhoto(supabase, photoUrl, client.id, 'initial')
             updateData.initial_photo_url = persistedPhotoUrl
           }
-        } catch { /* non-critical */ }
+        } catch (e) { log.warn('Photo persistence failed for existing client', { clientId: client.id, error: (e as Error).message }) }
 
         const { error } = await supabase.from('clients').update(updateData).eq('id', client.id)
         if (error) {
@@ -269,7 +272,7 @@ export async function runTypeformSync(): Promise<TypeformSyncResponse> {
               await supabase.from('check_ins').insert(checkInData)
               results.audit.initial_checkins_created++
             }
-          } catch { /* non-critical */ }
+          } catch (e) { log.warn('Initial check-in creation failed for existing client', { clientId: client.id, error: (e as Error).message }) }
         }
       }
     } catch (e) {
@@ -324,7 +327,7 @@ export async function runTypeformSync(): Promise<TypeformSyncResponse> {
         if (checkInData.photo_urls && Array.isArray(checkInData.photo_urls) && checkInData.photo_urls.length > 0) {
           checkInData.photo_urls = await persistPhotos(supabase, checkInData.photo_urls, client.id, 'checkin')
         }
-      } catch { /* non-critical */ }
+      } catch (e) { log.warn('Check-in photo persistence failed', { clientId: client.id, error: (e as Error).message }) }
 
       const { error } = await supabase.from('check_ins').insert(checkInData)
       if (error) {

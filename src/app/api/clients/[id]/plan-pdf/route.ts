@@ -4,6 +4,8 @@ import { generateRoutine } from '@/lib/routine-ai'
 import { generatePlanPdf } from '@/lib/pdf-generator'
 import type { Client } from '@/lib/types'
 
+export const maxDuration = 60
+
 export async function POST(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -62,9 +64,9 @@ export async function POST(
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Error desconocido'
-    console.error('Plan PDF generation error:', message, error)
+    console.error('Plan PDF generation error:', message)
     return NextResponse.json(
-      { error: `Error al generar el PDF: ${message}` },
+      { error: 'Error al generar el PDF. Intenta de nuevo.' },
       { status: 500 }
     )
   }

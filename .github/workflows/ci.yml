@@ -17,6 +17,7 @@ jobs:
       TYPEFORM_WEBHOOK_SECRET: placeholder
       TYPEFORM_API_TOKEN: placeholder
       CRON_SECRET: placeholder
+      CALENDLY_API_TOKEN: placeholder
 
     steps:
       - uses: actions/checkout@v4
@@ -27,6 +28,9 @@ jobs:
           cache: npm
 
       - run: npm ci
+
+      - name: Security audit
+        run: npm audit --audit-level=high || true
 
       - name: TypeScript type check
         run: npx tsc --noEmit

@@ -13,8 +13,10 @@ export async function POST(request: NextRequest) {
     const result = await runTypeformSync()
     return NextResponse.json(result)
   } catch (error) {
+    const { logger } = await import('@/lib/logger')
+    logger('api:sync:typeform').error('Typeform sync failed', { error: (error as Error).message })
     return NextResponse.json(
-      { error: 'Internal server error', detail: (error as Error).message },
+      { error: 'Internal server error' },
       { status: 500 }
     )
   }

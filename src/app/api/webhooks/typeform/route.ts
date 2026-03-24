@@ -167,15 +167,15 @@ export async function POST(request: NextRequest) {
             .update({ initial_photo_url: permanentUrl })
             .eq('id', client.id)
         }
-      } catch {
-        // Photo persistence is non-critical — client was already created
+      } catch (e) {
+        log.warn('Photo persistence failed (non-critical)', { clientId: client?.id, error: (e as Error).message })
       }
 
       // Create an initial check-in from the audit data (non-fatal)
       try {
         await createInitialCheckIn(supabase, client.id, answerMap, submittedAt, responseId)
-      } catch {
-        // Initial check-in is non-critical — client was already created
+      } catch (e) {
+        log.warn('Initial check-in creation failed (non-critical)', { clientId: client?.id, error: (e as Error).message })
       }
 
       // Process Calendly scheduling data from audit form (non-fatal)
@@ -293,8 +293,9 @@ export async function POST(request: NextRequest) {
       ...(calendlyAction ? { calendly: calendlyAction } : {}),
     })
   } catch (error) {
+    log.error('Typeform webhook failed', { error: (error as Error).message })
     return NextResponse.json(
-      { error: 'Internal server error', detail: (error as Error).message },
+      { error: 'Internal server error' },
       { status: 500 }
     )
   }
@@ -328,8 +329,8 @@ async function handleCheckIn(
     if (checkInData.photo_urls && Array.isArray(checkInData.photo_urls) && checkInData.photo_urls.length > 0) {
       checkInData.photo_urls = await persistPhotos(supabase, checkInData.photo_urls, clientId, 'checkin')
     }
-  } catch {
-    // Photo persistence failed — check-in will keep original Typeform temp URLs
+  } catch (e) {
+    log.warn('Check-in photo persistence failed', { clientId, error: (e as Error).message })
   }
 
   const { error: insertError } = await supabase
@@ -346,8 +347,8 @@ async function handleCheckIn(
       .eq('client_id', clientId)
       .eq('type', 'missed_checkin')
       .eq('is_resolved', false)
-  } catch {
-    // Alert resolution is non-critical — check-in data is already persisted
+  } catch (e) {
+    log.warn('Alert resolution failed (non-critical)', { clientId, error: (e as Error).message })
   }
 }
 

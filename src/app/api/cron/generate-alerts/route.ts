@@ -4,6 +4,8 @@ import { getAdminClient } from '@/lib/supabase/admin'
 import { CHECKIN_GRACE_DAYS } from '@/lib/constants'
 import { logger } from '@/lib/logger'
 
+export const maxDuration = 30
+
 const log = logger('api:cron:generate-alerts')
 
 export async function POST(request: NextRequest) {
@@ -57,21 +59,17 @@ export async function POST(request: NextRequest) {
       return existingAlertSet.has(`${clientId}:${type}`)
     }
 
-    // Get latest check-in per client
-    const { data: allCheckins, error: checkinsError } = await supabase
-      .from('check_ins')
-      .select('client_id, submitted_at')
-      .order('submitted_at', { ascending: false })
+    // Get latest check-in per client (optimized with DISTINCT ON)
+    const { data: latestCheckins, error: checkinsError } = await supabase
+      .rpc('get_latest_checkin_per_client')
 
     if (checkinsError) {
-      log.error('Failed to fetch check-ins', { error: checkinsError.message })
+      log.error('Failed to fetch latest check-ins', { error: checkinsError.message })
     }
 
     const lastCheckinByClient = new Map<string, string>()
-    for (const ci of allCheckins || []) {
-      if (!lastCheckinByClient.has(ci.client_id)) {
-        lastCheckinByClient.set(ci.client_id, ci.submitted_at)
-      }
+    for (const ci of (latestCheckins || []) as { client_id: string; latest_submitted_at: string }[]) {
+      lastCheckinByClient.set(ci.client_id, ci.latest_submitted_at)
     }
 
     // Get calls this month per client
@@ -276,8 +274,9 @@ export async function POST(request: NextRequest) {
     if (alertsToCreate.length > 0) {
       const { error } = await supabase.from('alerts').insert(alertsToCreate)
       if (error) {
+        log.error('Failed to insert alerts', { error: error.message })
         return NextResponse.json(
-          { error: 'Failed to create alerts', detail: error.message },
+          { error: 'Failed to create alerts' },
           { status: 500 }
         )
       }

@@ -167,8 +167,14 @@ export function ClientDetailHeader({ client, alertCount }: ClientDetailHeaderPro
           <button
             onClick={async () => {
               setGeneratingPdf(true)
+              const controller = new AbortController()
+              const timeoutId = setTimeout(() => controller.abort(), 60_000)
+
               try {
-                const res = await fetch(`/api/clients/${client.id}/plan-pdf`, { method: 'POST' })
+                const res = await fetch(`/api/clients/${client.id}/plan-pdf`, {
+                  method: 'POST',
+                  signal: controller.signal,
+                })
                 if (!res.ok) {
                   const err = await res.json()
                   alert(err.error || 'Error al generar el PDF')
@@ -181,9 +187,14 @@ export function ClientDetailHeader({ client, alertCount }: ClientDetailHeaderPro
                 a.download = `Plan Alimentacion - ${client.first_name} ${client.last_name}.pdf`
                 a.click()
                 URL.revokeObjectURL(url)
-              } catch {
-                alert('Error de conexión al generar el PDF')
+              } catch (err) {
+                if ((err as Error).name === 'AbortError') {
+                  alert('La generación del PDF tardó demasiado. Intenta de nuevo.')
+                } else {
+                  alert('Error de conexión al generar el PDF')
+                }
               } finally {
+                clearTimeout(timeoutId)
                 setGeneratingPdf(false)
               }
             }}
