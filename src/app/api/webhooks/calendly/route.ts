@@ -91,8 +91,16 @@ export async function POST(request: NextRequest) {
       const meetLink = payload.location?.join_url || null
       const callDate = payload.start_time.split('T')[0]
 
+      // Get coach_id from the client's assigned coach
+      const { data: clientRow } = await supabase
+        .from('clients')
+        .select('coach_id')
+        .eq('id', matchedClient.id)
+        .single()
+
       const { error: insertError } = await supabase.from('calls').insert({
         client_id: matchedClient.id,
+        coach_id: clientRow?.coach_id ?? null,
         call_date: callDate,
         scheduled_at: payload.start_time,
         calendly_event_uri: eventUri,
