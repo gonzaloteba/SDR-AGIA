@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getAdminClient } from '@/lib/supabase/admin'
 import { getCurrentUser, getScheduledEvents, getEventInvitees, extractMeetLink } from '@/lib/calendly'
 import { findClientInList } from '@/lib/typeform-helpers'
+import { runTypeformSync } from '@/lib/typeform-sync'
 import { logger } from '@/lib/logger'
 
 const log = logger('actions:settings')
@@ -148,26 +149,7 @@ export async function syncTypeformNow(): Promise<{
   }
 
   try {
-    const cronSecret = process.env.CRON_SECRET
-    if (!cronSecret) {
-      return { success: false, message: 'CRON_SECRET no configurado' }
-    }
-
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL
-      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
-      || 'http://localhost:3000'
-
-    const res = await fetch(`${baseUrl}/api/sync/typeform`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${cronSecret}` },
-    })
-
-    if (!res.ok) {
-      const text = await res.text()
-      return { success: false, message: `Error ${res.status}: ${text}` }
-    }
-
-    const data = await res.json()
+    const data = await runTypeformSync()
     const r = data.results
     const parts: string[] = []
     if (r?.audit?.created > 0) parts.push(`${r.audit.created} cliente(s) nuevo(s)`)
@@ -202,9 +184,9 @@ export async function syncCalendlyNow(): Promise<{
     const maxDate = new Date(now)
     maxDate.setDate(maxDate.getDate() + 30)
 
-    // Also check 24h in the past
+    // Check 7 days in the past to catch recent calls
     const minDate = new Date(now)
-    minDate.setHours(minDate.getHours() - 24)
+    minDate.setDate(minDate.getDate() - 7)
 
     // Resolve coach_id for the current user
     const { data: coachRow } = await adminClient
@@ -218,14 +200,13 @@ export async function syncCalendlyNow(): Promise<{
     const events = await getScheduledEvents(calendlyUser.uri, minDate.toISOString(), maxDate.toISOString())
 
     if (events.length === 0) {
-      return { success: true, message: 'No hay eventos en Calendly', synced: 0 }
+      return { success: true, message: 'No hay eventos en Calendly (últimos 7 días + próximos 30 días)', synced: 0 }
     }
 
-    // Load all active clients for name matching
+    // Load ALL clients for name matching (not just active — inactive clients may have calls too)
     const { data: clients } = await adminClient
       .from('clients')
       .select('id, first_name, last_name')
-      .eq('status', 'active')
 
     // Check existing calls
     const eventUris = events.map(e => e.uri)
@@ -302,11 +283,15 @@ export async function syncCalendlyNow(): Promise<{
       })
     }
 
+    const parts: string[] = []
+    if (synced > 0) parts.push(`${synced} llamada(s) nueva(s) sincronizada(s)`)
+    if (skipped > 0) parts.push(`${skipped} ya existente(s)`)
+    if (unmatched > 0) parts.push(`${unmatched} sin cliente asociado`)
+    if (parts.length === 0) parts.push('No hay llamadas nuevas para sincronizar')
+
     return {
       success: true,
-      message: synced > 0
-        ? `Sincronizadas ${synced} llamada(s) nuevas`
-        : 'No hay llamadas nuevas para sincronizar',
+      message: parts.join(', ') + ` (${events.length} evento(s) en Calendly)`,
       synced,
       skipped,
       unmatched,

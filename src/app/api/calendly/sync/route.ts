@@ -42,11 +42,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'No upcoming events', synced: 0 })
     }
 
-    // Load all active clients for name matching
+    // Load all clients for name matching (include non-active to avoid missing matches)
     const { data: clients, error: clientsError } = await supabase
       .from('clients')
       .select('id, first_name, last_name')
-      .eq('status', 'active')
 
     if (clientsError) {
       log.error('Failed to fetch clients', { error: clientsError.message })
