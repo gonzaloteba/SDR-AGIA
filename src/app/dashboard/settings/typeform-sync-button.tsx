@@ -3,22 +3,19 @@
 import { useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { syncTypeformNow } from './actions'
-import { useToast } from '@/components/ui/toast'
 
 export function TypeformSyncButton() {
   const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<string | null>(null)
-  const { toast } = useToast()
+  const [result, setResult] = useState<{ message: string; success: boolean } | null>(null)
 
   async function handleSync() {
     setLoading(true)
     setResult(null)
     try {
       const res = await syncTypeformNow()
-      setResult(res.message)
-      toast(res.message, res.success ? 'success' : 'error')
+      setResult(res)
     } catch {
-      toast('Error al sincronizar con Typeform', 'error')
+      setResult({ message: 'Error al sincronizar con Typeform', success: false })
     } finally {
       setLoading(false)
     }
@@ -35,7 +32,9 @@ export function TypeformSyncButton() {
         {loading ? 'Sincronizando...' : 'Sincronizar ahora'}
       </button>
       {result && (
-        <p className="text-xs text-muted-foreground">{result}</p>
+        <p className={`text-xs ${result.success ? 'text-muted-foreground' : 'text-red-600'}`}>
+          {result.message}
+        </p>
       )}
     </div>
   )
