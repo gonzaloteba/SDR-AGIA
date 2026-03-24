@@ -3,11 +3,11 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft, ExternalLink, Edit, Pencil, Check, X, Loader2, FileDown } from 'lucide-react'
+import { ArrowLeft, ExternalLink, Edit, Pencil, Check, X, Loader2, FileDown, Trash2 } from 'lucide-react'
 import { PHASE_LABELS, BADGE_CONFIG } from '@/lib/constants'
 import { getDaysRemaining } from '@/lib/health-score'
 import { StatusDropdown } from '@/components/clients/status-dropdown'
-import { updateClientEndDate, toggleClientBadge } from '@/app/dashboard/clients/[id]/actions'
+import { updateClientEndDate, toggleClientBadge, deleteClient } from '@/app/dashboard/clients/[id]/actions'
 import { cn } from '@/lib/utils'
 import type { Client, NutritionPhase } from '@/lib/types'
 
@@ -25,6 +25,8 @@ export function ClientDetailHeader({ client, alertCount }: ClientDetailHeaderPro
   const [isSuccessCase, setIsSuccessCase] = useState(client.is_success_case)
   const [togglingBadge, setTogglingBadge] = useState<string | null>(null)
   const [generatingPdf, setGeneratingPdf] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
   const coachParam = searchParams.get('coach')
@@ -67,6 +69,18 @@ export function ClientDetailHeader({ client, alertCount }: ClientDetailHeaderPro
       router.refresh()
     }
     setTogglingBadge(null)
+  }
+
+  async function handleDelete() {
+    setDeleting(true)
+    const result = await deleteClient(client.id)
+    if (result.success) {
+      router.push(`/dashboard/clients${coachSuffix}`)
+    } else {
+      alert(result.error || 'Error al eliminar el cliente')
+      setDeleting(false)
+      setShowDeleteConfirm(false)
+    }
   }
 
   return (
@@ -201,8 +215,48 @@ export function ClientDetailHeader({ client, alertCount }: ClientDetailHeaderPro
             <Edit className="h-3 w-3" />
             Editar
           </Link>
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="inline-flex items-center gap-1.5 rounded-md border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+          >
+            <Trash2 className="h-3 w-3" />
+            Eliminar
+          </button>
         </div>
       </div>
+
+      {/* Delete confirmation dialog */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="mx-4 w-full max-w-sm rounded-xl border bg-card p-6 shadow-lg">
+            <h3 className="text-lg font-semibold">Eliminar cliente</h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Se eliminará a <strong>{client.first_name} {client.last_name}</strong> y todos sus datos asociados (check-ins, llamadas, alertas, planes). Esta acción no se puede deshacer.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deleting}
+                className="rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-muted"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="inline-flex items-center gap-1.5 rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {deleting ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Trash2 className="h-3.5 w-3.5" />
+                )}
+                {deleting ? 'Eliminando...' : 'Eliminar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Contact info + Badge toggles */}
       <div className="mt-4 flex items-center justify-between">

@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { getAdminClient } from '@/lib/supabase/admin'
-import { updateEndDateSchema, toggleBadgeSchema, callIdSchema } from '@/lib/validations'
+import { clientIdSchema, updateEndDateSchema, toggleBadgeSchema, callIdSchema } from '@/lib/validations'
 import { logger } from '@/lib/logger'
 
 const log = logger('actions:client')
@@ -139,6 +139,42 @@ export async function completeCoachActions(callId: string) {
     return { success: true }
   } catch (e) {
     log.error('Unexpected error completing actions', { callId, error: (e as Error).message })
+    return { success: false, error: 'Error inesperado' }
+  }
+}
+
+export async function deleteClient(clientId: string) {
+  const parsed = clientIdSchema.safeParse(clientId)
+  if (!parsed.success) {
+    return { success: false, error: 'ID de cliente inválido' }
+  }
+
+  const auth = await authorizeForClient(parsed.data)
+  if (!auth.authorized) return { success: false, error: auth.error }
+
+  try {
+    const supabase = getAdminClient()
+
+    // Delete related records first, then the client
+    const tables = ['alerts', 'check_ins', 'calls', 'training_plans'] as const
+    for (const table of tables) {
+      const { error } = await supabase.from(table).delete().eq('client_id', parsed.data)
+      if (error) {
+        log.error(`Failed to delete ${table} for client`, { clientId, error: error.message })
+        return { success: false, error: `Error eliminando ${table}: ${error.message}` }
+      }
+    }
+
+    const { error } = await supabase.from('clients').delete().eq('id', parsed.data)
+    if (error) {
+      log.error('Failed to delete client', { clientId, error: error.message })
+      return { success: false, error: error.message }
+    }
+
+    revalidateDashboard()
+    return { success: true }
+  } catch (e) {
+    log.error('Unexpected error deleting client', { clientId, error: (e as Error).message })
     return { success: false, error: 'Error inesperado' }
   }
 }
