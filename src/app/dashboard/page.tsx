@@ -63,12 +63,12 @@ export default async function DashboardPage({ searchParams }: Props) {
 
   const clientsQuery = supabase.from('clients').select('*').eq('status', 'active')
   if (filterCoachId) {
-    clientsQuery.eq('coach_id', filterCoachId)
+    clientsQuery.or(`coach_id.eq.${filterCoachId},coach_id.is.null`)
   }
 
   const allClientsQuery = supabase.from('clients').select('status').in('status', ['active', 'completed', 'cancelled'])
   if (filterCoachId) {
-    allClientsQuery.eq('coach_id', filterCoachId)
+    allClientsQuery.or(`coach_id.eq.${filterCoachId},coach_id.is.null`)
   }
 
   const safe = <T,>(promise: PromiseLike<{ data: T | null; error: unknown }>): Promise<{ data: T | null }> =>

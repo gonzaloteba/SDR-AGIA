@@ -56,7 +56,7 @@ export default async function AlertsPage({ searchParams }: Props) {
     const { data: clients } = await supabase
       .from('clients')
       .select('id')
-      .eq('coach_id', filterCoachId)
+      .or(`coach_id.eq.${filterCoachId},coach_id.is.null`)
     clientIds = clients?.map(c => c.id) ?? []
   }
 
