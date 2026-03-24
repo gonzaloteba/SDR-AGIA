@@ -27,7 +27,7 @@ export function FixOrphanCallsButton() {
         disabled={loading}
         className="inline-flex items-center gap-2 rounded-md border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors disabled:opacity-50"
       >
-        {loading ? 'Reparando...' : 'Reparar llamadas sin coach'}
+        {loading ? 'Reparando...' : 'Reparar llamadas y clientes sin coach'}
       </button>
       {result && (
         <p className={`mt-2 text-xs ${result.success ? 'text-green-600' : 'text-red-600'}`}>

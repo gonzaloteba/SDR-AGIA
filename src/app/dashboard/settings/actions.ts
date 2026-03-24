@@ -111,31 +111,55 @@ export async function fixOrphanCalls(): Promise<{ success: boolean; message: str
     return { success: false, message: 'No eres un coach registrado', fixed: 0 }
   }
 
-  // Find calls without coach_id
-  const { data: orphanCalls, error } = await adminClient
+  const parts: string[] = []
+
+  // Fix calls without coach_id
+  const { data: orphanCalls } = await adminClient
     .from('calls')
     .select('id')
     .is('coach_id', null)
 
-  if (error) {
-    return { success: false, message: `Error: ${error.message}`, fixed: 0 }
+  if (orphanCalls && orphanCalls.length > 0) {
+    const { error: updateError } = await adminClient
+      .from('calls')
+      .update({ coach_id: coachRow.id })
+      .is('coach_id', null)
+
+    if (updateError) {
+      return { success: false, message: `Error al actualizar llamadas: ${updateError.message}`, fixed: 0 }
+    }
+    parts.push(`${orphanCalls.length} llamada(s) asignadas`)
+    log.info('Fixed orphan calls', { count: orphanCalls.length, coachId: coachRow.id })
   }
 
-  if (!orphanCalls || orphanCalls.length === 0) {
-    return { success: true, message: 'Todas las llamadas ya tienen coach asignado', fixed: 0 }
-  }
-
-  const { error: updateError } = await adminClient
-    .from('calls')
-    .update({ coach_id: coachRow.id })
+  // Fix clients without coach_id — assign ALL to this coach
+  const { data: orphanClients } = await adminClient
+    .from('clients')
+    .select('id')
     .is('coach_id', null)
 
-  if (updateError) {
-    return { success: false, message: `Error al actualizar: ${updateError.message}`, fixed: 0 }
+  if (orphanClients && orphanClients.length > 0) {
+    const { error: clientUpdateError } = await adminClient
+      .from('clients')
+      .update({ coach_id: coachRow.id })
+      .is('coach_id', null)
+
+    if (clientUpdateError) {
+      return { success: false, message: `Error al actualizar clientes: ${clientUpdateError.message}`, fixed: 0 }
+    }
+    parts.push(`${orphanClients.length} cliente(s) asignado(s)`)
+    log.info('Fixed orphan clients', { count: orphanClients.length, coachId: coachRow.id })
   }
 
-  log.info('Fixed orphan calls', { count: orphanCalls.length, coachId: coachRow.id })
-  return { success: true, message: `${orphanCalls.length} llamada(s) asignadas a tu cuenta`, fixed: orphanCalls.length }
+  if (parts.length === 0) {
+    return { success: true, message: 'Todo está asignado correctamente', fixed: 0 }
+  }
+
+  return {
+    success: true,
+    message: `${parts.join(', ')} a tu cuenta`,
+    fixed: (orphanCalls?.length || 0) + (orphanClients?.length || 0),
+  }
 }
 
 export async function syncTypeformNow(): Promise<{

@@ -566,7 +566,12 @@ async function syncCalendlyForClient(
       if (!activeInvitee) continue
 
       // Check if the invitee matches this client
-      const nameParts = activeInvitee.name.trim().split(/\s+/)
+      // Handle concatenated names like "GonzaloTeba" → "Gonzalo Teba"
+      let invRawName = activeInvitee.name.trim()
+      if (!invRawName.includes(' ') && /[a-z][A-Z]/.test(invRawName)) {
+        invRawName = invRawName.replace(/([a-z])([A-Z])/g, '$1 $2')
+      }
+      const nameParts = invRawName.split(/\s+/)
       const invFirstName = nameParts[0] || ''
       const invLastName = nameParts.slice(1).join(' ') || ''
 

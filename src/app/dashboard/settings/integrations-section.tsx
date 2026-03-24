@@ -95,12 +95,12 @@ export function IntegrationsSection({ status }: Props) {
           </span>
         </div>
 
-        {/* Fix orphan calls */}
+        {/* Fix orphan calls and clients */}
         <div className="rounded-lg border border-dashed p-4">
           <div className="mb-3">
-            <p className="font-medium">Reparar llamadas</p>
+            <p className="font-medium">Reparar asignaciones</p>
             <p className="text-muted-foreground">
-              Asigna tu cuenta como coach a las llamadas que no tienen coach asignado
+              Asigna tu cuenta como coach a las llamadas y clientes que no tienen coach asignado
             </p>
           </div>
           <FixOrphanCallsButton />

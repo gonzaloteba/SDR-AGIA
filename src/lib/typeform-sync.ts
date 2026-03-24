@@ -192,6 +192,8 @@ export async function runTypeformSync(): Promise<TypeformSyncResponse> {
         }
       } else {
         const updateData: Record<string, unknown> = { onboarding_submitted_at: submittedAt, onboarding_response_id: response.token }
+        // Always ensure coach_id is set
+        if (defaultCoachId) updateData.coach_id = defaultCoachId
         mapAuditFields(answerMap, updateData)
 
         const { data: existing } = await supabase
@@ -303,6 +305,7 @@ export async function runTypeformSync(): Promise<TypeformSyncResponse> {
             end_date: checkinEndDate,
             renewal_date: checkinEndDate,
             plan_type: '3_months',
+            coach_id: defaultCoachId,
           })
           .select('id')
           .single()
