@@ -131,15 +131,15 @@ function shouldCreateNoCallAlert(
   now: Date
 ): AlertCandidate | null {
   const weekOfMonth = getWeekOfMonth(now)
-  if (weekOfMonth < 4) {
-    const dayOfWeek = now.getDay()
-    if (dayOfWeek >= 5 && callsThisMonth < weekOfMonth) {
-      return {
-        client_id: client.client_id,
-        type: 'no_call_logged',
-        severity: 'high',
-        message: expect.stringContaining('llamadas') as unknown as string,
-      }
+  // Expect 1 call by week 2, 2 calls by week 4
+  const expectedCalls = Math.min(2, Math.ceil(weekOfMonth / 2))
+  const dayOfWeek = now.getDay()
+  if (dayOfWeek >= 5 && callsThisMonth < expectedCalls) {
+    return {
+      client_id: client.client_id,
+      type: 'no_call_logged',
+      severity: 'high',
+      message: expect.stringContaining('llamadas') as unknown as string,
     }
   }
   return null
@@ -334,7 +334,8 @@ describe('No call logged alert', () => {
   it('does not trigger when calls are on track', () => {
     const now = new Date('2024-06-14') // Friday, week 2
     const weekOfMonth = getWeekOfMonth(now)
-    const alert = shouldCreateNoCallAlert(baseClient, weekOfMonth, now)
+    const expectedCalls = Math.min(2, Math.ceil(weekOfMonth / 2))
+    const alert = shouldCreateNoCallAlert(baseClient, expectedCalls, now)
     expect(alert).toBeNull()
   })
 })

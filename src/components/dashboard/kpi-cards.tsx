@@ -1,4 +1,4 @@
-import { Users, ClipboardCheck, Bell, TrendingUp } from 'lucide-react'
+import { Users, ClipboardCheck, TrendingUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface KpiCardProps {
@@ -38,40 +38,33 @@ function KpiCard({ title, value, subtitle, icon, trend }: KpiCardProps) {
 
 interface KpiCardsProps {
   activeClients: number
-  checkinsThisWeek: number
+  checkinsOnTime: number
   expectedCheckins: number
-  pendingAlerts: number
   retentionRate: number
 }
 
 export function KpiCards({
   activeClients,
-  checkinsThisWeek,
+  checkinsOnTime,
   expectedCheckins,
-  pendingAlerts,
   retentionRate,
 }: KpiCardsProps) {
   const checkinRate = expectedCheckins > 0
-    ? Math.round((checkinsThisWeek / expectedCheckins) * 100)
+    ? Math.round((checkinsOnTime / expectedCheckins) * 100)
     : 0
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <KpiCard
         title="Clientes Activos"
         value={activeClients}
         icon={<Users className="h-4 w-4 text-muted-foreground" />}
       />
       <KpiCard
-        title="Check-ins esta Semana"
-        value={`${checkinsThisWeek}/${expectedCheckins}`}
+        title="Check-ins al día"
+        value={`${checkinsOnTime}/${expectedCheckins}`}
         subtitle={`${checkinRate}% completado`}
         icon={<ClipboardCheck className="h-4 w-4 text-muted-foreground" />}
-      />
-      <KpiCard
-        title="Alertas Pendientes"
-        value={pendingAlerts}
-        icon={<Bell className="h-4 w-4 text-muted-foreground" />}
       />
       <KpiCard
         title="Tasa de Retención"

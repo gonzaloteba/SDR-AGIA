@@ -23,13 +23,8 @@ export function ProgressCharts({ checkIns }: ProgressChartsProps) {
   const data = sorted.map((ci) => ({
     date: new Date(ci.submitted_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }),
     peso: ci.weight,
-    grasa: ci.body_fat_percentage,
-    cintura: ci.waist_measurement,
     energia: ci.energy_level,
-    sueno: ci.sleep_quality,
-    animo: ci.mood,
-    nutricion: ci.nutrition_adherence,
-    entrenamiento: ci.training_adherence,
+    estres: ci.stress_level,
   }))
 
   if (data.length === 0) {
@@ -42,10 +37,10 @@ export function ProgressCharts({ checkIns }: ProgressChartsProps) {
 
   return (
     <div className="space-y-6">
-      {/* Body metrics */}
+      {/* Peso */}
       <div className="rounded-xl border bg-card p-6 shadow-sm">
         <h3 className="mb-4 text-sm font-medium text-muted-foreground">
-          Métricas Corporales
+          Peso (kg)
         </h3>
         <ResponsiveContainer width="100%" height={250}>
           <LineChart data={data}>
@@ -54,16 +49,14 @@ export function ProgressCharts({ checkIns }: ProgressChartsProps) {
             <YAxis tick={{ fontSize: 11 }} />
             <Tooltip />
             <Line type="monotone" dataKey="peso" name="Peso (kg)" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} />
-            <Line type="monotone" dataKey="grasa" name="Grasa (%)" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} />
-            <Line type="monotone" dataKey="cintura" name="Cintura (cm)" stroke="#8b5cf6" strokeWidth={2} dot={{ r: 3 }} />
           </LineChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Wellbeing metrics */}
+      {/* Energía y Estrés */}
       <div className="rounded-xl border bg-card p-6 shadow-sm">
         <h3 className="mb-4 text-sm font-medium text-muted-foreground">
-          Bienestar y Adherencia (1-10)
+          Energía y Estrés (1-10)
         </h3>
         <ResponsiveContainer width="100%" height={250}>
           <LineChart data={data}>
@@ -72,10 +65,7 @@ export function ProgressCharts({ checkIns }: ProgressChartsProps) {
             <YAxis domain={[0, 10]} tick={{ fontSize: 11 }} />
             <Tooltip />
             <Line type="monotone" dataKey="energia" name="Energía" stroke="#22c55e" strokeWidth={2} dot={{ r: 3 }} />
-            <Line type="monotone" dataKey="sueno" name="Sueño" stroke="#6366f1" strokeWidth={2} dot={{ r: 3 }} />
-            <Line type="monotone" dataKey="animo" name="Ánimo" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} />
-            <Line type="monotone" dataKey="nutricion" name="Adherencia Nutrición" stroke="#14b8a6" strokeWidth={2} dot={{ r: 3 }} />
-            <Line type="monotone" dataKey="entrenamiento" name="Adherencia Entrenamiento" stroke="#f97316" strokeWidth={2} dot={{ r: 3 }} />
+            <Line type="monotone" dataKey="estres" name="Estrés" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} />
           </LineChart>
         </ResponsiveContainer>
       </div>

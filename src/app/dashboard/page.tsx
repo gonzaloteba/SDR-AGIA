@@ -6,8 +6,10 @@ import { KpiCards } from '@/components/dashboard/kpi-cards'
 import { ClientHealthChart } from '@/components/dashboard/client-health-chart'
 import { PhaseDistribution } from '@/components/dashboard/phase-distribution'
 import { CoachSelector } from '@/components/dashboard/coach-selector'
-import { startOfWeek, endOfWeek, startOfMonth } from 'date-fns'
+import { UpcomingCalls } from '@/components/dashboard/upcoming-calls'
+import { startOfMonth, differenceInDays } from 'date-fns'
 import { getCurrentCoach, isAdmin } from '@/lib/auth'
+import { CHECKIN_GRACE_DAYS } from '@/lib/constants'
 import type { NutritionPhase } from '@/lib/types'
 
 interface Props {
@@ -20,8 +22,6 @@ export default async function DashboardPage({ searchParams }: Props) {
   const admin = coach && isAdmin(coach)
   const { coach: selectedCoachId } = await searchParams
   const now = new Date()
-  const weekStart = startOfWeek(now, { weekStartsOn: 1 }).toISOString()
-  const weekEnd = endOfWeek(now, { weekStartsOn: 1 }).toISOString()
   const monthStart = startOfMonth(now).toISOString()
 
   // Fetch coach list for admin selector
@@ -74,13 +74,21 @@ export default async function DashboardPage({ searchParams }: Props) {
   const safe = <T,>(promise: PromiseLike<{ data: T | null; error: unknown }>): Promise<{ data: T | null }> =>
     Promise.resolve(promise).then(r => ({ data: r.data })).catch(() => ({ data: null }))
 
-  const [clientsResult, checkinsResult, callsResult, alertsResult, allClientsResult] = await Promise.all([
+  // Fetch upcoming scheduled calls (next 7 days)
+  const upcomingCallsQuery = supabase
+    .from('calls')
+    .select('id, client_id, call_date, scheduled_at, meet_link, calendly_event_uri')
+    .not('scheduled_at', 'is', null)
+    .gte('scheduled_at', now.toISOString())
+    .order('scheduled_at', { ascending: true })
+    .limit(10)
+
+  const [clientsResult, checkinsResult, callsResult, alertsResult, allClientsResult, coachActionsResult, upcomingCallsResult] = await Promise.all([
     safe(clientsQuery),
     safe(supabase
       .from('check_ins')
-      .select('client_id')
-      .gte('submitted_at', weekStart)
-      .lte('submitted_at', weekEnd)),
+      .select('client_id, submitted_at')
+      .order('submitted_at', { ascending: false })),
     safe(supabase
       .from('calls')
       .select('client_id')
@@ -90,27 +98,66 @@ export default async function DashboardPage({ searchParams }: Props) {
       .select('id, client_id')
       .eq('is_resolved', false)),
     safe(allClientsQuery),
+    safe(supabase
+      .from('calls')
+      .select('client_id')
+      .not('coach_actions', 'is', null)
+      .eq('coach_actions_completed', false)),
+    safe(upcomingCallsQuery),
   ])
 
   const clients = clientsResult.data
-  const checkinsThisWeek = checkinsResult.data
+  const allCheckins = checkinsResult.data
   const pendingAlerts = alertsResult.data
   const allClients = allClientsResult.data
+  const pendingCoachActions = coachActionsResult.data
+
+  // Build last check-in date per client
+  const lastCheckinByClient = new Map<string, string>()
+  for (const ci of allCheckins || []) {
+    if (!lastCheckinByClient.has(ci.client_id)) {
+      lastCheckinByClient.set(ci.client_id, ci.submitted_at)
+    }
+  }
+
+  // Build upcoming calls with client names
+  const rawUpcomingCalls = (upcomingCallsResult.data || []) as {
+    id: string
+    client_id: string
+    call_date: string
+    scheduled_at: string
+    meet_link: string | null
+    calendly_event_uri: string | null
+  }[]
 
   const activeClients = clients || []
   const activeClientIds = new Set(activeClients.map(c => c.id))
-  const checkinClientIds = new Set((checkinsThisWeek || []).map((c) => c.client_id))
+
+  // Check-in is "recent" if last submission was within CHECKIN_GRACE_DAYS (15 days)
+  const recentCheckinClientIds = new Set<string>()
+  for (const [clientId, submittedAt] of lastCheckinByClient) {
+    const daysSince = differenceInDays(now, new Date(submittedAt))
+    if (daysSince < CHECKIN_GRACE_DAYS) {
+      recentCheckinClientIds.add(clientId)
+    }
+  }
 
   // Count unresolved alerts only for this coach's clients
   const filteredAlerts = (pendingAlerts || []).filter(a => activeClientIds.has(a.client_id))
   const alertClientIds = new Set(filteredAlerts.map((a) => a.client_id))
+
+  // Clients with pending coach actions
+  const coachActionClientIds = new Set(
+    (pendingCoachActions || []).filter(a => activeClientIds.has(a.client_id)).map(a => a.client_id)
+  )
 
   let green = 0
   let red = 0
   const phaseDistribution: Record<NutritionPhase, number> = { 1: 0, 2: 0, 3: 0 }
 
   for (const client of activeClients) {
-    if (alertClientIds.has(client.id)) red++
+    const hasIssue = alertClientIds.has(client.id) || coachActionClientIds.has(client.id) || !recentCheckinClientIds.has(client.id)
+    if (hasIssue) red++
     else green++
 
     const phase = client.current_phase as NutritionPhase
@@ -123,6 +170,15 @@ export default async function DashboardPage({ searchParams }: Props) {
   const total = allClients?.length || 0
   const cancelled = allClients?.filter((c) => c.status === 'cancelled').length || 0
   const retentionRate = total > 0 ? Math.round(((total - cancelled) / total) * 100) : 100
+
+  // Resolve client names for upcoming calls
+  const clientMap = new Map(activeClients.map(c => [c.id, { first_name: c.first_name, last_name: c.last_name }]))
+  const upcomingCalls = rawUpcomingCalls
+    .filter(c => activeClientIds.has(c.client_id))
+    .map(call => ({
+      ...call,
+      client: clientMap.get(call.client_id) || { first_name: 'Cliente', last_name: 'desconocido' },
+    }))
 
   const selectedCoachName = admin && selectedCoachId
     ? coaches.find(c => c.id === selectedCoachId)?.full_name ?? null
@@ -137,11 +193,12 @@ export default async function DashboardPage({ searchParams }: Props) {
         )}
         <KpiCards
           activeClients={activeClients.length}
-          checkinsThisWeek={checkinClientIds.size}
+          checkinsOnTime={recentCheckinClientIds.size}
           expectedCheckins={activeClients.length}
-          pendingAlerts={filteredAlerts.length}
           retentionRate={retentionRate}
         />
+
+        <UpcomingCalls calls={upcomingCalls} />
 
         <div className="grid gap-6 lg:grid-cols-2">
           <ClientHealthChart green={green} red={red} />

@@ -1,4 +1,9 @@
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const heicConvert = require('heic-convert')
 import type { AdminClient } from '@/lib/supabase/admin'
+
+/** Content types that browsers cannot display natively and need conversion */
+const NEEDS_CONVERSION = ['image/heic', 'image/heif']
 
 /**
  * Build fetch headers for downloading a photo URL.
@@ -49,10 +54,16 @@ export async function persistPhoto(
         return tempUrl
       }
 
-      const blob = await response.blob()
+      let buffer = Buffer.from(await response.arrayBuffer())
+      let contentType = response.headers.get('content-type') || 'image/jpeg'
+
+      // Convert HEIC/HEIF to JPEG (browsers cannot display these formats)
+      if (NEEDS_CONVERSION.some((t) => contentType.includes(t))) {
+        buffer = Buffer.from(await heicConvert({ buffer, format: 'JPEG', quality: 0.85 }))
+        contentType = 'image/jpeg'
+      }
 
       // Determine file extension from content type
-      const contentType = response.headers.get('content-type') || 'image/jpeg'
       const ext = contentType.includes('png') ? 'png'
         : contentType.includes('webp') ? 'webp'
         : 'jpg'
@@ -64,7 +75,7 @@ export async function persistPhoto(
       // Upload to Supabase Storage
       const { error: uploadError } = await supabase.storage
         .from('client-photos')
-        .upload(path, blob, {
+        .upload(path, buffer, {
           contentType,
           upsert: false,
         })
@@ -158,6 +169,105 @@ export async function fixBrokenPhotoUrls(
       if (anyFixed) {
         await supabase.from('check_ins').update({ photo_urls: permanentUrls }).eq('id', ci.id)
         stats.checkInsFixed++
+      }
+    } catch (e) {
+      stats.errors.push(`Check-in ${ci.id}: ${(e as Error).message}`)
+    }
+  }
+
+  return stats
+}
+
+/**
+ * Re-download already-persisted photos from Supabase Storage, check if the
+ * actual content is HEIC/HEIF, and if so convert to JPEG and re-upload.
+ *
+ * This fixes photos that were uploaded before HEIC conversion was added —
+ * they have a .jpg extension but the binary content is actually HEIC.
+ */
+export async function reconvertHeicPhotos(
+  supabase: AdminClient
+): Promise<{ photosFixed: number; errors: string[] }> {
+  const stats = { photosFixed: 0, errors: [] as string[] }
+
+  async function reconvertUrl(url: string, clientId: string, prefix: string): Promise<string | null> {
+    if (!url || !isPersistedUrl(url)) return null
+
+    const response = await fetch(url)
+    if (!response.ok) return null
+
+    const buffer = Buffer.from(await response.arrayBuffer())
+
+    // Check for HEIC magic bytes: offset 4-8 should be "ftyp" and offset 8-12
+    // should start with "heic", "heix", "hevc", "mif1", etc.
+    const hasFtyp = buffer.length > 12 &&
+      buffer.toString('ascii', 4, 8) === 'ftyp'
+    const brand = hasFtyp ? buffer.toString('ascii', 8, 12) : ''
+    const isHeic = hasFtyp && ['heic', 'heix', 'hevc', 'hevx', 'mif1'].includes(brand)
+
+    if (!isHeic) return null
+
+    // Convert to JPEG
+    const jpegBuffer = Buffer.from(await heicConvert({ buffer, format: 'JPEG', quality: 0.85 }))
+
+    // Upload to new path
+    const timestamp = Date.now()
+    const path = `clients/${clientId}/${prefix}-${timestamp}.jpg`
+
+    const { error: uploadError } = await supabase.storage
+      .from('client-photos')
+      .upload(path, jpegBuffer, { contentType: 'image/jpeg', upsert: false })
+
+    if (uploadError) return null
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('client-photos')
+      .getPublicUrl(path)
+
+    return publicUrl
+  }
+
+  // Fix client initial_photo_url
+  const { data: clients } = await supabase
+    .from('clients')
+    .select('id, first_name, last_name, initial_photo_url')
+    .not('initial_photo_url', 'is', null)
+
+  for (const client of clients || []) {
+    if (!client.initial_photo_url) continue
+    try {
+      const newUrl = await reconvertUrl(client.initial_photo_url, client.id, 'initial-fixed')
+      if (newUrl) {
+        await supabase.from('clients').update({ initial_photo_url: newUrl }).eq('id', client.id)
+        stats.photosFixed++
+      }
+    } catch (e) {
+      stats.errors.push(`${client.first_name} ${client.last_name}: ${(e as Error).message}`)
+    }
+  }
+
+  // Fix check-in photo_urls
+  const { data: checkIns } = await supabase
+    .from('check_ins')
+    .select('id, client_id, photo_urls')
+    .not('photo_urls', 'is', null)
+
+  for (const ci of checkIns || []) {
+    const urls = ci.photo_urls as string[] | null
+    if (!urls) continue
+
+    try {
+      let anyFixed = false
+      const newUrls = await Promise.all(
+        urls.map(async (url, i) => {
+          const newUrl = await reconvertUrl(url, ci.client_id, `checkin-fixed-${i}`)
+          if (newUrl) { anyFixed = true; return newUrl }
+          return url
+        })
+      )
+      if (anyFixed) {
+        await supabase.from('check_ins').update({ photo_urls: newUrls }).eq('id', ci.id)
+        stats.photosFixed++
       }
     } catch (e) {
       stats.errors.push(`Check-in ${ci.id}: ${(e as Error).message}`)

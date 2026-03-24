@@ -39,6 +39,7 @@ export const ALERT_TYPE_LABELS: Record<AlertType, string> = {
   no_call_logged: 'Llamada no registrada',
   program_ending: 'Programa por terminar',
   birthday: 'Cumpleaños',
+  upcoming_call: 'Llamada programada',
 }
 
 export const SEVERITY_COLORS: Record<AlertSeverity, string> = {
@@ -58,8 +59,8 @@ export const HEALTH_COLORS = {
   red: 'bg-red-500',
 } as const
 
-export const CALLS_PER_MONTH = 3
+export const CALLS_PER_MONTH = 2
 export const PROGRAM_DURATION_DAYS = 90
 export const RENEWAL_ALERT_DAYS = 21
 export const TRAINING_PLAN_ALERT_DAYS = 7
-export const CHECKIN_GRACE_DAYS = 8
+export const CHECKIN_GRACE_DAYS = 15

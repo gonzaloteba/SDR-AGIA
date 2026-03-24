@@ -221,7 +221,20 @@ export function PhaseTracker({ clientId, currentPhase, startDate, endDate, phase
               Preparar indicaciones para la siguiente fase de alimentación
             </p>
           </div>
-          <Clock className="h-4 w-4 shrink-0 opacity-60" />
+          <button
+            type="button"
+            onClick={() => handlePhaseClick(nextPhase)}
+            disabled={changingPhase}
+            className={cn(
+              'shrink-0 rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+              isUrgent
+                ? 'bg-red-700 text-white hover:bg-red-800'
+                : 'bg-amber-700 text-white hover:bg-amber-800',
+              changingPhase && 'opacity-50'
+            )}
+          >
+            {changingPhase ? 'Cambiando...' : 'Fase cambiada'}
+          </button>
         </div>
       )}
 

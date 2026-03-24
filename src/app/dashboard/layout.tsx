@@ -13,7 +13,7 @@ export default async function DashboardLayout({
   return (
     <ToastProvider>
       <div className="flex h-screen">
-        <Suspense>
+        <Suspense fallback={<div className="w-64 shrink-0 bg-muted animate-pulse" />}>
           <Sidebar coachName={coach?.full_name ?? null} coachRole={coach?.role ?? null} />
         </Suspense>
         <main className="flex-1 overflow-auto bg-muted/30">

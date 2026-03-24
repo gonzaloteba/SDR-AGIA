@@ -1,12 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import Link from 'next/link'
-import { AlertTriangle, CheckCircle, Cake } from 'lucide-react'
+import { AlertTriangle, CheckCircle, Cake, Phone } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { ALERT_TYPE_LABELS, SEVERITY_COLORS, SEVERITY_LABELS } from '@/lib/constants'
+import { useToast } from '@/components/ui/toast'
 import type { Alert } from '@/lib/types'
 
 interface AlertListProps {
@@ -18,20 +19,25 @@ export function AlertList({ alerts }: AlertListProps) {
   const [severityFilter, setSeverityFilter] = useState<string>('all')
   const [showResolved, setShowResolved] = useState(false)
   const router = useRouter()
+  const { toast } = useToast()
 
-  const filtered = alerts.filter((alert) => {
+  const filtered = useMemo(() => alerts.filter((alert) => {
     const matchesType = typeFilter === 'all' || alert.type === typeFilter
     const matchesSeverity = severityFilter === 'all' || alert.severity === severityFilter
     const matchesResolved = showResolved || !alert.is_resolved
     return matchesType && matchesSeverity && matchesResolved
-  })
+  }), [alerts, typeFilter, severityFilter, showResolved])
 
   async function resolveAlert(alertId: string) {
     const supabase = createClient()
-    await supabase
+    const { error } = await supabase
       .from('alerts')
       .update({ is_resolved: true, resolved_at: new Date().toISOString() })
       .eq('id', alertId)
+    if (error) {
+      toast('No se pudo resolver la alerta.', 'error')
+      return
+    }
     router.refresh()
   }
 
@@ -88,6 +94,8 @@ export function AlertList({ alerts }: AlertListProps) {
               <div className="flex items-start gap-4">
                 {alert.type === 'birthday' ? (
                   <Cake className="mt-0.5 h-5 w-5 shrink-0 text-pink-500" />
+                ) : alert.type === 'upcoming_call' ? (
+                  <Phone className="mt-0.5 h-5 w-5 shrink-0 text-blue-500" />
                 ) : (
                   <AlertTriangle
                     className={cn(

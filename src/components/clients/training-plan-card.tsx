@@ -51,7 +51,7 @@ export function TrainingPlanCard({ plans, clientId }: TrainingPlanCardProps) {
       setShowForm(false)
       router.refresh()
     } catch {
-      alert('Error al guardar el plan. Inténtalo de nuevo.')
+      toast('Error al guardar el plan. Inténtalo de nuevo.', 'error')
     } finally {
       setLoading(false)
     }

@@ -62,6 +62,7 @@ describe('ALERT_TYPE_LABELS', () => {
     expect(ALERT_TYPE_LABELS.no_call_logged).toBeTruthy()
     expect(ALERT_TYPE_LABELS.program_ending).toBeTruthy()
     expect(ALERT_TYPE_LABELS.birthday).toBeTruthy()
+    expect(ALERT_TYPE_LABELS.upcoming_call).toBeTruthy()
   })
 })
 

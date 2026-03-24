@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { differenceInDays, startOfMonth, getWeekOfMonth } from 'date-fns'
 import { getAdminClient } from '@/lib/supabase/admin'
+import { CHECKIN_GRACE_DAYS } from '@/lib/constants'
 import { logger } from '@/lib/logger'
 
 const log = logger('api:cron:generate-alerts')
@@ -124,7 +125,7 @@ export async function POST(request: NextRequest) {
             ? differenceInDays(now, new Date(lastCheckin))
             : daysSinceStart
 
-          if (daysSinceCheckin >= 8) {
+          if (daysSinceCheckin >= CHECKIN_GRACE_DAYS) {
             alertsToCreate.push({
               client_id: client.id,
               type: 'missed_checkin',
@@ -191,20 +192,20 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // 5. No call logged this week (except week 4)
+        // 5. No call logged (2 calls expected per month)
         if (!alertExists(client.id, 'no_call_logged')) {
           const weekOfMonth = getWeekOfMonth(now)
-          if (weekOfMonth < 4) {
-            const callsThisMonth = callCountByClient.get(client.id) || 0
-            const dayOfWeek = now.getDay()
-            if (dayOfWeek >= 5 && callsThisMonth < weekOfMonth) {
-              alertsToCreate.push({
-                client_id: client.id,
-                type: 'no_call_logged',
-                severity: 'high',
-                message: `${client.first_name} ${client.last_name}: ${callsThisMonth} llamadas registradas de ${weekOfMonth} esperadas este mes`,
-              })
-            }
+          // Expect 1 call by week 2, 2 calls by week 4
+          const expectedCalls = Math.min(2, Math.ceil(weekOfMonth / 2))
+          const callsThisMonth = callCountByClient.get(client.id) || 0
+          const dayOfWeek = now.getDay()
+          if (dayOfWeek >= 5 && callsThisMonth < expectedCalls) {
+            alertsToCreate.push({
+              client_id: client.id,
+              type: 'no_call_logged',
+              severity: 'high',
+              message: `${client.first_name} ${client.last_name}: ${callsThisMonth} llamadas registradas de ${expectedCalls} esperadas este mes`,
+            })
           }
         }
 
@@ -236,6 +237,38 @@ export async function POST(request: NextRequest) {
       } catch (e) {
         log.error('Error processing alerts for client', { clientId: client.id, error: (e as Error).message })
         continue
+      }
+    }
+
+    // 8. Upcoming scheduled calls (next 24 hours)
+    const tomorrow = new Date(now)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+
+    const { data: upcomingCalls, error: upcomingCallsError } = await supabase
+      .from('calls')
+      .select('client_id, scheduled_at, calendly_event_uri')
+      .not('scheduled_at', 'is', null)
+      .gte('scheduled_at', now.toISOString())
+      .lte('scheduled_at', tomorrow.toISOString())
+
+    if (upcomingCallsError) {
+      log.error('Failed to fetch upcoming calls', { error: upcomingCallsError.message })
+    }
+
+    for (const call of upcomingCalls || []) {
+      if (!alertExists(call.client_id, 'upcoming_call')) {
+        const client = clients.find(c => c.id === call.client_id)
+        if (!client) continue
+
+        const scheduledDate = new Date(call.scheduled_at)
+        const formattedTime = scheduledDate.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+
+        alertsToCreate.push({
+          client_id: call.client_id,
+          type: 'upcoming_call',
+          severity: 'medium',
+          message: `Llamada programada con ${client.first_name} ${client.last_name} hoy a las ${formattedTime}`,
+        })
       }
     }
 

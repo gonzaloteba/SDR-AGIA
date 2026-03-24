@@ -5,7 +5,8 @@ import { Header } from '@/components/layout/header'
 import { ClientTable } from '@/components/clients/client-table'
 import { CoachSelector } from '@/components/dashboard/coach-selector'
 import { calculateHealthScore, getDaysRemaining } from '@/lib/health-score'
-import { startOfMonth } from 'date-fns'
+import { startOfMonth, differenceInDays } from 'date-fns'
+import { PHASE_ALERT_DAYS_BEFORE, CHECKIN_GRACE_DAYS } from '@/lib/constants'
 import { getCurrentCoach, isAdmin } from '@/lib/auth'
 import type { ClientWithHealth } from '@/lib/types'
 
@@ -18,7 +19,8 @@ export default async function ClientsPage({ searchParams }: Props) {
   const coach = await getCurrentCoach()
   const admin = coach && isAdmin(coach)
   const { coach: selectedCoachId } = await searchParams
-  const monthStart = startOfMonth(new Date()).toISOString()
+  const now = new Date()
+  const monthStart = startOfMonth(now).toISOString()
 
   // Fetch coach list for admin selector
   let coaches: { id: string; full_name: string }[] = []
@@ -52,7 +54,7 @@ export default async function ClientsPage({ searchParams }: Props) {
     )
   }
 
-  const clientsQuery = supabase.from('clients').select('*').order('first_name')
+  const clientsQuery = supabase.from('clients').select('*').order('start_date', { ascending: false })
   if (filterCoachId) {
     clientsQuery.eq('coach_id', filterCoachId)
   }
@@ -118,6 +120,10 @@ export default async function ClientsPage({ searchParams }: Props) {
     const lastCheckinDate = lastCheckinByClient.get(client.id) || null
     const callsCount = callCountByClient.get(client.id) || 0
     const alertCount = alertCountByClient.get(client.id) || 0
+    const pendingActions = coachActionsCountByClient.get(client.id) || 0
+    const hasRecentCheckin = lastCheckinDate
+      ? differenceInDays(today, new Date(lastCheckinDate)) < CHECKIN_GRACE_DAYS
+      : false
 
     let isBirthdayToday = false
     if (client.birth_date) {
@@ -125,14 +131,28 @@ export default async function ClientsPage({ searchParams }: Props) {
       isBirthdayToday = birth.getMonth() === today.getMonth() && birth.getDate() === today.getDate()
     }
 
+    // Check if phase change is pending (within alert window)
+    let hasPendingPhaseChange = false
+    if (client.phase_change_date && client.current_phase < 3 && client.custom_phase_duration_days !== -1) {
+      const daysUntil = differenceInDays(new Date(client.phase_change_date), today)
+      hasPendingPhaseChange = daysUntil >= 0 && daysUntil <= PHASE_ALERT_DAYS_BEFORE
+    }
+
     return {
       ...client,
-      health_score: calculateHealthScore(alertCount),
+      health_score: calculateHealthScore({
+        unresolvedAlerts: alertCount,
+        pendingCoachActions: pendingActions,
+        hasRecentCheckin,
+        hasPendingPhaseChange,
+      }),
       last_checkin_date: lastCheckinDate,
+      has_recent_checkin: hasRecentCheckin,
       calls_this_month: callsCount,
       days_remaining: getDaysRemaining(client.end_date),
-      pending_coach_actions: coachActionsCountByClient.get(client.id) || 0,
+      pending_coach_actions: pendingActions,
       is_birthday_today: isBirthdayToday,
+      has_pending_phase_change: hasPendingPhaseChange,
     }
   })
 

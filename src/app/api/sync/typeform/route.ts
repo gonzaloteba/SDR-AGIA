@@ -12,6 +12,7 @@ import {
 import {
   extractValue,
   findClientByName,
+  findClientInList,
   mapAuditFields,
   buildCheckInData,
   type TypeformAnswer,
@@ -45,10 +46,17 @@ async function fetchAllResponses(formId: string, token: string) {
     const params = new URLSearchParams({ page_size: '100' })
     if (before) params.set('before', before)
 
-    const res = await fetch(
-      `${TYPEFORM_API_BASE}/forms/${formId}/responses?${params}`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    )
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 30_000)
+    let res: Response
+    try {
+      res = await fetch(
+        `${TYPEFORM_API_BASE}/forms/${formId}/responses?${params}`,
+        { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal }
+      )
+    } finally {
+      clearTimeout(timeoutId)
+    }
 
     if (!res.ok) {
       const text = await res.text()
@@ -68,11 +76,10 @@ async function fetchAllResponses(formId: string, token: string) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Auth check — only accept CRON_SECRET via Authorization header
     const authHeader = request.headers.get('authorization')
-    const { searchParams } = new URL(request.url)
-    const secret = searchParams.get('secret') || authHeader?.replace('Bearer ', '')
-
-    if (secret !== process.env.CRON_SECRET && secret !== process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    const secret = authHeader?.replace('Bearer ', '')
+    if (!secret || secret !== process.env.CRON_SECRET) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -88,6 +95,12 @@ export async function POST(request: NextRequest) {
       audit: { fetched: 0, created: 0, updated: 0, skipped: 0, initial_checkins_created: 0, errors: [] as string[] },
       checkin: { fetched: 0, inserted: 0, skipped: 0, clients_created: 0, auto_created_clients: [] as string[], errors: [] as string[] },
     }
+
+    // Pre-load all clients once to avoid N+1 queries in loops
+    const { data: allClientRows } = await supabase
+      .from('clients')
+      .select('id, first_name, last_name')
+    let clientList = allClientRows || []
 
     // ========== SYNC AUDITORÍA INICIAL ==========
     const auditResponses = await fetchAllResponses(AUDIT_FORM_ID, typeformToken)
@@ -110,7 +123,7 @@ export async function POST(request: NextRequest) {
           continue
         }
 
-        const client = await findClientByName(supabase, firstName, lastName)
+        const client = findClientInList(clientList, firstName, lastName)
 
         if (!client) {
           const startDate = (submittedAt || new Date().toISOString()).split('T')[0]
@@ -132,6 +145,8 @@ export async function POST(request: NextRequest) {
           if (error || !newClient) {
             results.audit.errors.push(`Create ${firstName} ${lastName}: ${error?.message}`)
           } else {
+            // Add to in-memory list so subsequent iterations can find this client
+            clientList = [...clientList, { id: newClient.id, first_name: firstName.trim(), last_name: lastName.trim() }]
             results.audit.created++
             // Persist initial photo
             let persistedPhotoUrl: string | null = null
@@ -278,7 +293,7 @@ export async function POST(request: NextRequest) {
           continue
         }
 
-        let client = await findClientByName(supabase, firstName, lastName)
+        let client = findClientInList(clientList, firstName, lastName)
         if (!client) {
           const checkinStartDate = (submittedAt || new Date().toISOString()).split('T')[0]
           const checkinEndDate = calculateEndDate(checkinStartDate, 90)
@@ -300,6 +315,7 @@ export async function POST(request: NextRequest) {
             continue
           }
           client = newClient
+          clientList = [...clientList, { id: newClient.id, first_name: firstName.trim(), last_name: lastName.trim() }]
           results.checkin.clients_created++
           results.checkin.auto_created_clients.push(`${firstName} ${lastName}`)
         }

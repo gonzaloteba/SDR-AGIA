@@ -1,8 +1,16 @@
 import { differenceInDays } from 'date-fns'
 import type { HealthScore } from './types'
 
-export function calculateHealthScore(unresolvedAlertCount: number): HealthScore {
-  return unresolvedAlertCount > 0 ? 'red' : 'green'
+export function calculateHealthScore(opts: {
+  unresolvedAlerts: number
+  pendingCoachActions: number
+  hasRecentCheckin: boolean
+  hasPendingPhaseChange?: boolean
+}): HealthScore {
+  if (opts.unresolvedAlerts > 0 || opts.pendingCoachActions > 0 || !opts.hasRecentCheckin || opts.hasPendingPhaseChange) {
+    return 'red'
+  }
+  return 'green'
 }
 
 export function getDaysRemaining(endDate: string): number {

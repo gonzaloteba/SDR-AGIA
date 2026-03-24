@@ -8,6 +8,7 @@ export type AlertType =
   | 'no_call_logged'
   | 'program_ending'
   | 'birthday'
+  | 'upcoming_call'
 export type AlertSeverity = 'low' | 'medium' | 'high'
 export type UserRole = 'coach' | 'admin'
 export type HealthScore = 'green' | 'red'
@@ -130,8 +131,11 @@ export interface Call {
   transcript: string | null
   google_event_id: string | null
   meet_link: string | null
+  calendly_event_uri: string | null
+  scheduled_at: string | null
   coach_actions: string | null
   coach_actions_completed: boolean
+  coach_actions_completed_items: number[]
   created_at: string
 }
 
@@ -168,8 +172,10 @@ export interface Coach {
 export interface ClientWithHealth extends Client {
   health_score: HealthScore
   last_checkin_date: string | null
+  has_recent_checkin: boolean
   calls_this_month: number
   days_remaining: number
   pending_coach_actions: number
   is_birthday_today: boolean
+  has_pending_phase_change: boolean
 }

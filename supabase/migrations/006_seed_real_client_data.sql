@@ -1184,7 +1184,7 @@ WHERE LOWER(TRIM(first_name)) = LOWER('Luis Eduardo')
     OR LOWER(TRIM(last_name)) LIKE LOWER('Guerrero%'));
 UPDATE clients SET
     phone = COALESCE(phone, '+525544781112')
-WHERE LOWER(TRIM(first_name)) = LOWER('Erik')
+WHERE LOWER(TRIM(first_name)) = LOWER('Erick')
   AND LOWER(TRIM(last_name)) = LOWER('Ortega');
 -- ============================================
 -- STEP 5: Insert check-ins from Check-Ins CSV

@@ -47,8 +47,8 @@ export function ClientHealthChart({ green, red }: ClientHealthChartProps) {
             paddingAngle={3}
             dataKey="value"
           >
-            {data.map((entry, index) => (
-              <Cell key={index} fill={entry.color} />
+            {data.map((entry) => (
+              <Cell key={entry.name} fill={entry.color} />
             ))}
           </Pie>
           <Tooltip

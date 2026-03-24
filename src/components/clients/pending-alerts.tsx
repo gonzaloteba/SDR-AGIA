@@ -6,6 +6,7 @@ import { AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { ALERT_TYPE_LABELS, SEVERITY_COLORS, SEVERITY_LABELS } from '@/lib/constants'
 import { cn } from '@/lib/utils'
+import { useToast } from '@/components/ui/toast'
 import type { Alert } from '@/lib/types'
 
 interface PendingAlertsProps {
@@ -16,6 +17,7 @@ export function PendingAlerts({ alerts: initialAlerts }: PendingAlertsProps) {
   const [alerts, setAlerts] = useState(initialAlerts)
   const [resolvingId, setResolvingId] = useState<string | null>(null)
   const router = useRouter()
+  const { toast } = useToast()
 
   async function resolveAlert(alertId: string) {
     setResolvingId(alertId)
@@ -25,11 +27,15 @@ export function PendingAlerts({ alerts: initialAlerts }: PendingAlertsProps) {
       .update({ is_resolved: true, resolved_at: new Date().toISOString() })
       .eq('id', alertId)
 
-    if (!error) {
-      setAlerts((prev) => prev.filter((a) => a.id !== alertId))
-      router.refresh()
+    if (error) {
+      toast('No se pudo resolver la alerta.', 'error')
+      setResolvingId(null)
+      return
     }
+
+    setAlerts((prev) => prev.filter((a) => a.id !== alertId))
     setResolvingId(null)
+    router.refresh()
   }
 
   if (alerts.length === 0) {

@@ -151,8 +151,6 @@ function CheckinCard({ checkIn, previousCheckIn }: { checkIn: CheckIn; previousC
     year: 'numeric',
   })
 
-  const hasMetrics = checkIn.weight || checkIn.body_fat_percentage || checkIn.waist_measurement
-  const hasScores = checkIn.energy_level || checkIn.sleep_quality || checkIn.mood || checkIn.nutrition_adherence || checkIn.training_adherence
   const photos = checkIn.photo_urls || []
 
   return (
@@ -163,189 +161,36 @@ function CheckinCard({ checkIn, previousCheckIn }: { checkIn: CheckIn; previousC
           <ClipboardCheck className="h-4 w-4 text-muted-foreground" />
           <p className="text-sm font-medium capitalize">{dateStr}</p>
         </div>
-        {checkIn.phase && (
-          <span className="text-xs rounded-full border px-2 py-0.5 text-muted-foreground">
-            Fase {checkIn.phase}
-          </span>
-        )}
       </div>
 
-      {/* Body metrics */}
-      {hasMetrics && (
+      {/* Peso */}
+      {checkIn.weight && (
         <div className="flex flex-wrap gap-4 text-sm">
-          {checkIn.weight && (
-            <div className="flex items-center gap-2 rounded-lg border px-3 py-2">
-              <div>
-                <p className="text-xs text-muted-foreground">Peso</p>
-                <div className="flex items-center gap-1">
-                  <span className="font-medium">{checkIn.weight} kg</span>
-                  <TrendIndicator current={checkIn.weight} previous={previousCheckIn?.weight ?? null} />
-                </div>
+          <div className="flex items-center gap-2 rounded-lg border px-3 py-2">
+            <div>
+              <p className="text-xs text-muted-foreground">Peso</p>
+              <div className="flex items-center gap-1">
+                <span className="font-medium">{checkIn.weight} kg</span>
+                <TrendIndicator current={checkIn.weight} previous={previousCheckIn?.weight ?? null} />
               </div>
             </div>
-          )}
-          {checkIn.body_fat_percentage && (
-            <div className="flex items-center gap-2 rounded-lg border px-3 py-2">
-              <div>
-                <p className="text-xs text-muted-foreground">% Grasa</p>
-                <div className="flex items-center gap-1">
-                  <span className="font-medium">{checkIn.body_fat_percentage}%</span>
-                  <TrendIndicator current={checkIn.body_fat_percentage} previous={previousCheckIn?.body_fat_percentage ?? null} />
-                </div>
-              </div>
-            </div>
-          )}
-          {checkIn.waist_measurement && (
-            <div className="flex items-center gap-2 rounded-lg border px-3 py-2">
-              <div>
-                <p className="text-xs text-muted-foreground">Cintura</p>
-                <div className="flex items-center gap-1">
-                  <span className="font-medium">{checkIn.waist_measurement} cm</span>
-                  <TrendIndicator current={checkIn.waist_measurement} previous={previousCheckIn?.waist_measurement ?? null} />
-                </div>
-              </div>
-            </div>
-          )}
+          </div>
         </div>
       )}
 
-      {/* Score bars */}
-      {hasScores && (
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      {/* Horas de sueño */}
+      {checkIn.sleep_hours && (
+        <div className="rounded-lg bg-muted/30 px-3 py-2 text-sm">
+          <p className="text-xs text-muted-foreground">Horas de sueño</p>
+          <p className="font-medium">{checkIn.sleep_hours}</p>
+        </div>
+      )}
+
+      {/* Score bars - Energía y Estrés */}
+      {(checkIn.energy_level || checkIn.stress_level) && (
+        <div className="grid gap-2 sm:grid-cols-2">
           {checkIn.energy_level && <ScoreBar value={checkIn.energy_level} label="Energía" />}
-          {checkIn.sleep_quality && <ScoreBar value={checkIn.sleep_quality} label="Sueño" />}
-          {checkIn.mood && <ScoreBar value={checkIn.mood} label="Ánimo" />}
-          {checkIn.nutrition_adherence && <ScoreBar value={checkIn.nutrition_adherence} label="Adherencia nutrición" />}
-          {checkIn.training_adherence && <ScoreBar value={checkIn.training_adherence} label="Adherencia entrenamiento" />}
-        </div>
-      )}
-
-      {/* Qualitative data */}
-      {(checkIn.protocol_adherence || checkIn.daily_energy || checkIn.cravings || checkIn.digestion || checkIn.difficulties) && (
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 text-sm">
-          {checkIn.protocol_adherence && (
-            <div className="rounded-lg bg-muted/30 px-3 py-2">
-              <p className="text-xs text-muted-foreground">Adhesión al protocolo</p>
-              <p className="font-medium">{checkIn.protocol_adherence}</p>
-            </div>
-          )}
-          {checkIn.daily_energy && (
-            <div className="rounded-lg bg-muted/30 px-3 py-2">
-              <p className="text-xs text-muted-foreground">Energía diaria</p>
-              <p className="font-medium">{checkIn.daily_energy}</p>
-            </div>
-          )}
-          {checkIn.cravings && (
-            <div className="rounded-lg bg-muted/30 px-3 py-2">
-              <p className="text-xs text-muted-foreground">Antojos</p>
-              <p className="font-medium">{checkIn.cravings === 'TRUE' || checkIn.cravings === 'true' ? 'Sí' : checkIn.cravings === 'FALSE' || checkIn.cravings === 'false' ? 'No' : checkIn.cravings}</p>
-            </div>
-          )}
-          {checkIn.craving_details && (
-            <div className="rounded-lg bg-muted/30 px-3 py-2">
-              <p className="text-xs text-muted-foreground">Detalle antojos</p>
-              <p className="font-medium">{checkIn.craving_details}</p>
-            </div>
-          )}
-          {checkIn.digestion && (
-            <div className="rounded-lg bg-muted/30 px-3 py-2">
-              <p className="text-xs text-muted-foreground">Digestión</p>
-              <p className="font-medium">{checkIn.digestion}</p>
-            </div>
-          )}
-          {checkIn.difficulties && (
-            <div className="rounded-lg bg-muted/30 px-3 py-2 sm:col-span-2">
-              <p className="text-xs text-muted-foreground">Dificultades</p>
-              <p className="font-medium">{checkIn.difficulties}</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Carbohidratos */}
-      {(checkIn.carb_performance || checkIn.carb_sensation || checkIn.post_carb_symptoms || checkIn.carb_strategy) && (
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 text-sm">
-          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground sm:col-span-2 lg:col-span-3">Carbohidratos</p>
-          {checkIn.carb_performance && (
-            <div className="rounded-lg bg-muted/30 px-3 py-2">
-              <p className="text-xs text-muted-foreground">Rendimiento en entrenos</p>
-              <p className="font-medium">{checkIn.carb_performance}</p>
-            </div>
-          )}
-          {checkIn.carb_sensation && (
-            <div className="rounded-lg bg-muted/30 px-3 py-2">
-              <p className="text-xs text-muted-foreground">Sensación con carbos</p>
-              <p className="font-medium">{checkIn.carb_sensation}</p>
-            </div>
-          )}
-          {checkIn.post_carb_symptoms && (
-            <div className="rounded-lg bg-muted/30 px-3 py-2">
-              <p className="text-xs text-muted-foreground">Síntomas post-carbos</p>
-              <p className="font-medium">{checkIn.post_carb_symptoms}</p>
-            </div>
-          )}
-          {checkIn.carb_strategy && (
-            <div className="rounded-lg bg-muted/30 px-3 py-2 sm:col-span-2">
-              <p className="text-xs text-muted-foreground">Uso estratégico</p>
-              <p className="font-medium">{checkIn.carb_strategy}</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Control y adherencia */}
-      {(checkIn.loss_of_control || checkIn.loss_of_control_detail || checkIn.main_limiter || checkIn.priority_objective) && (
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 text-sm">
-          {checkIn.loss_of_control !== null && checkIn.loss_of_control !== undefined && (
-            <div className="rounded-lg bg-muted/30 px-3 py-2">
-              <p className="text-xs text-muted-foreground">Pérdida de control</p>
-              <p className="font-medium">{checkIn.loss_of_control ? 'Sí' : 'No'}</p>
-            </div>
-          )}
-          {checkIn.loss_of_control_detail && (
-            <div className="rounded-lg bg-muted/30 px-3 py-2 sm:col-span-2">
-              <p className="text-xs text-muted-foreground">Detalle pérdida de control</p>
-              <p className="font-medium">{checkIn.loss_of_control_detail}</p>
-            </div>
-          )}
-          {checkIn.main_limiter && (
-            <div className="rounded-lg bg-muted/30 px-3 py-2">
-              <p className="text-xs text-muted-foreground">Principal limitante</p>
-              <p className="font-medium">{checkIn.main_limiter}</p>
-            </div>
-          )}
-          {checkIn.priority_objective && (
-            <div className="rounded-lg bg-muted/30 px-3 py-2">
-              <p className="text-xs text-muted-foreground">Objetivo prioritario</p>
-              <p className="font-medium">{checkIn.priority_objective}</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Suplementos */}
-      {(checkIn.unused_optimizers || checkIn.unused_supplements) && (
-        <div className="grid gap-2 sm:grid-cols-2 text-sm">
-          {checkIn.unused_optimizers && (
-            <div className="rounded-lg bg-muted/30 px-3 py-2">
-              <p className="text-xs text-muted-foreground">Optimizadores no usados</p>
-              <p className="font-medium">{checkIn.unused_optimizers}</p>
-            </div>
-          )}
-          {checkIn.unused_supplements && (
-            <div className="rounded-lg bg-muted/30 px-3 py-2">
-              <p className="text-xs text-muted-foreground">Suplementos sin motivo claro</p>
-              <p className="font-medium">{checkIn.unused_supplements}</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Notes */}
-      {checkIn.notes && (
-        <div className="rounded-lg bg-muted/50 px-3 py-2">
-          <p className="text-xs text-muted-foreground mb-1">Notas</p>
-          <p className="text-sm">{checkIn.notes}</p>
+          {checkIn.stress_level && <ScoreBar value={checkIn.stress_level} label="Estrés" />}
         </div>
       )}
 
@@ -447,8 +292,21 @@ export function CheckinHistory({ checkIns }: CheckinHistoryProps) {
             </div>
 
             {/* Comparison view */}
-            <div className={`flex items-center justify-center gap-4 ${!isFirstPhoto && firstPhoto ? '' : ''}`}>
-              {/* First photo (reference) — only show when viewing a different photo */}
+            <div className={`flex items-center justify-center gap-1 ${!isFirstPhoto && firstPhoto ? '' : ''}`}>
+              {/* Selected photo (left) */}
+              <div className="flex-1 flex flex-col items-center">
+                <p className="text-white/70 text-xs mb-2">
+                  {isFirstPhoto ? 'Primera foto — ' : ''}
+                  {new Date(selectedPhoto.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </p>
+                <SafeImage
+                  src={selectedPhoto.url}
+                  alt={`Progreso ${galleryIndex + 1}`}
+                  className="max-h-[75vh] rounded-lg object-contain w-full"
+                  fallbackClassName="h-64 w-full rounded-lg"
+                />
+              </div>
+              {/* First photo (reference, right) — only show when viewing a different photo */}
               {!isFirstPhoto && firstPhoto && (
                 <div className="flex-1 flex flex-col items-center">
                   <p className="text-white/70 text-xs mb-2">
@@ -462,19 +320,6 @@ export function CheckinHistory({ checkIns }: CheckinHistoryProps) {
                   />
                 </div>
               )}
-              {/* Selected photo */}
-              <div className="flex-1 flex flex-col items-center">
-                <p className="text-white/70 text-xs mb-2">
-                  {isFirstPhoto ? 'Primera foto — ' : ''}
-                  {new Date(selectedPhoto.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
-                </p>
-                <SafeImage
-                  src={selectedPhoto.url}
-                  alt={`Progreso ${galleryIndex + 1}`}
-                  className="max-h-[75vh] rounded-lg object-contain w-full"
-                  fallbackClassName="h-64 w-full rounded-lg"
-                />
-              </div>
             </div>
 
             {/* Navigation arrows */}
