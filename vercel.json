@@ -6,7 +6,7 @@
     },
     {
       "path": "/api/calendly/sync",
-      "schedule": "0 */4 * * *"
+      "schedule": "0 9 * * *"
     }
   ]
 }
