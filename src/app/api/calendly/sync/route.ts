@@ -21,8 +21,16 @@ export async function POST(request: NextRequest) {
     const maxDate = new Date(now)
     maxDate.setDate(maxDate.getDate() + 30)
 
+    // Resolve coach from Calendly user email or use first coach
     const user = await getCurrentUser()
     log.info('Calendly user resolved', { name: user.name, uri: user.uri })
+
+    // Try to find the coach to link calls
+    const { data: coachRows } = await supabase
+      .from('coaches')
+      .select('id')
+      .limit(1)
+    const coachId = coachRows?.[0]?.id ?? null
 
     const events = await getScheduledEvents(
       user.uri,
@@ -105,6 +113,7 @@ export async function POST(request: NextRequest) {
 
       const { error: insertError } = await supabase.from('calls').insert({
         client_id: matchedClient.id,
+        coach_id: coachId,
         call_date: callDate,
         scheduled_at: event.start_time,
         calendly_event_uri: event.uri,
