@@ -109,6 +109,7 @@ export function ClientTable({ clients }: ClientTableProps) {
         >
           <option value="all">Todos los estados</option>
           <option value="active">Activo</option>
+          <option value="paused">Pausado</option>
           <option value="completed">Concluido</option>
           <option value="cancelled">Cancelado</option>
         </select>

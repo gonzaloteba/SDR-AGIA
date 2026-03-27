@@ -33,7 +33,7 @@ export const clientFormSchema = z.object({
   plan_type: z.enum(['3_months', '4_months', '6_months', '12_months']),
   closer: z.string().max(100).nullable().optional().or(z.literal('')),
   drive_folder_url: z.string().url('URL inválida').nullable().optional().or(z.literal('')),
-  status: z.enum(['active', 'completed', 'cancelled']).default('active'),
+  status: z.enum(['active', 'paused', 'completed', 'cancelled']).default('active'),
   current_phase: z.union([z.literal(1), z.literal(2), z.literal(3)]).default(1),
   birth_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional().or(z.literal('')),
   height_cm: z.number().int().min(50).max(300).nullable().optional(),

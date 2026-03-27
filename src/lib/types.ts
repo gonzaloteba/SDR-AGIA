@@ -1,4 +1,4 @@
-export type ClientStatus = 'active' | 'cancelled' | 'completed'
+export type ClientStatus = 'active' | 'paused' | 'cancelled' | 'completed'
 export type NutritionPhase = 1 | 2 | 3
 export type AlertType =
   | 'missed_checkin'

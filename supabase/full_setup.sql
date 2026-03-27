@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS clients (
   phone TEXT,
   timezone TEXT DEFAULT 'America/Mexico_City',
   status TEXT NOT NULL DEFAULT 'active'
-    CHECK (status IN ('active', 'cancelled', 'completed')),
+    CHECK (status IN ('active', 'paused', 'cancelled', 'completed')),
   is_renewed BOOLEAN NOT NULL DEFAULT false,
   is_success_case BOOLEAN NOT NULL DEFAULT false,
   plan_type TEXT DEFAULT '3_months',

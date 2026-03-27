@@ -341,6 +341,7 @@ export function ClientForm({ client }: ClientFormProps) {
               className={inputClass}
             >
               <option value="active">Activo</option>
+              <option value="paused">Pausado</option>
               <option value="completed">Concluido</option>
               <option value="cancelled">Cancelado</option>
             </select>

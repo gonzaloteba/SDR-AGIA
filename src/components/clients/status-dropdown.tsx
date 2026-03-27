@@ -14,7 +14,7 @@ interface StatusDropdownProps {
   size?: 'sm' | 'md'
 }
 
-const ALL_STATUSES: ClientStatus[] = ['active', 'completed', 'cancelled']
+const ALL_STATUSES: ClientStatus[] = ['active', 'paused', 'completed', 'cancelled']
 
 export function StatusDropdown({ clientId, currentStatus, size = 'sm' }: StatusDropdownProps) {
   const [open, setOpen] = useState(false)
