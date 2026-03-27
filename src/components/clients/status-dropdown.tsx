@@ -6,6 +6,7 @@ import { ChevronDown } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { STATUS_LABELS, STATUS_COLORS } from '@/lib/constants'
+import { useToast } from '@/components/ui/toast'
 import type { ClientStatus } from '@/lib/types'
 
 interface StatusDropdownProps {
@@ -23,6 +24,11 @@ export function StatusDropdown({ clientId, currentStatus, size = 'sm' }: StatusD
   const [loading, setLoading] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const router = useRouter()
+  const { toast } = useToast()
+
+  useEffect(() => {
+    setStatus(currentStatus)
+  }, [currentStatus])
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -41,18 +47,24 @@ export function StatusDropdown({ clientId, currentStatus, size = 'sm' }: StatusD
     }
 
     setLoading(true)
+    const previousStatus = status
+    setStatus(newStatus)
+    setOpen(false)
+
     const supabase = createClient()
     const { error } = await supabase
       .from('clients')
       .update({ status: newStatus })
       .eq('id', clientId)
 
-    if (!error) {
-      setStatus(newStatus)
+    if (error) {
+      setStatus(previousStatus)
+      toast(`Error al cambiar el estado: ${error.message}`, 'error')
+    } else {
+      toast(`Estado cambiado a ${STATUS_LABELS[newStatus]}`, 'success')
       router.refresh()
     }
     setLoading(false)
-    setOpen(false)
   }
 
   const sizeClasses = size === 'sm'
