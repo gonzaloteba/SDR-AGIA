@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { differenceInDays, startOfMonth, getWeekOfMonth } from 'date-fns'
 import { getAdminClient } from '@/lib/supabase/admin'
-import { CHECKIN_GRACE_DAYS } from '@/lib/constants'
+import { CHECKIN_GRACE_DAYS, PHASE_ALERT_DAYS_BEFORE } from '@/lib/constants'
 import { logger } from '@/lib/logger'
 
 export const maxDuration = 30
@@ -140,8 +140,8 @@ export async function POST(request: NextRequest) {
           if (!isNaN(phaseChangeDate.getTime())) {
             const daysUntilPhaseChange = differenceInDays(phaseChangeDate, now)
             const alertWindow = client.custom_phase_duration_days && client.custom_phase_duration_days > 0
-              ? Math.min(3, client.custom_phase_duration_days)
-              : 3
+              ? Math.min(PHASE_ALERT_DAYS_BEFORE, client.custom_phase_duration_days)
+              : PHASE_ALERT_DAYS_BEFORE
             if (daysUntilPhaseChange >= 0 && daysUntilPhaseChange <= alertWindow && client.current_phase < 3) {
               const phaseNames: Record<number, string> = {
                 2: 'Fase 2 - Reintroducción',

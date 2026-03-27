@@ -55,9 +55,10 @@ function shouldCreatePhaseChangeAlert(
     new Date(client.phase_change_date),
     now
   )
+  const PHASE_ALERT_DAYS_BEFORE = 1
   const alertWindow = client.custom_phase_duration_days && client.custom_phase_duration_days > 0
-    ? Math.min(3, client.custom_phase_duration_days)
-    : 3
+    ? Math.min(PHASE_ALERT_DAYS_BEFORE, client.custom_phase_duration_days)
+    : PHASE_ALERT_DAYS_BEFORE
 
   if (daysUntilPhaseChange >= 0 && daysUntilPhaseChange <= alertWindow && client.current_phase < 3) {
     const phaseNames: Record<number, string> = {
@@ -195,7 +196,20 @@ describe('Missed check-in alert', () => {
 })
 
 describe('Phase change alert', () => {
-  it('triggers 3 days before phase change', () => {
+  it('triggers 1 day before phase change', () => {
+    const client = {
+      ...baseClient,
+      phase_change_date: '2024-06-11',
+      current_phase: 1,
+    }
+    const now = new Date('2024-06-10') // 1 day before
+    const alert = shouldCreatePhaseChangeAlert(client, now)
+    expect(alert).not.toBeNull()
+    expect(alert!.type).toBe('phase_change')
+    expect(alert!.severity).toBe('high')
+  })
+
+  it('does not trigger 2 or more days before phase change', () => {
     const client = {
       ...baseClient,
       phase_change_date: '2024-06-13',
@@ -203,9 +217,7 @@ describe('Phase change alert', () => {
     }
     const now = new Date('2024-06-10') // 3 days before
     const alert = shouldCreatePhaseChangeAlert(client, now)
-    expect(alert).not.toBeNull()
-    expect(alert!.type).toBe('phase_change')
-    expect(alert!.severity).toBe('medium')
+    expect(alert).toBeNull()
   })
 
   it('is high severity when 1 day or less', () => {

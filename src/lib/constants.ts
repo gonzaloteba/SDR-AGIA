@@ -12,7 +12,7 @@ export const PHASE_DURATIONS_DAYS: Record<NutritionPhase, number> = {
   3: 53, // remaining of 90 days
 }
 
-export const PHASE_ALERT_DAYS_BEFORE = 3
+export const PHASE_ALERT_DAYS_BEFORE = 1
 
 export const STATUS_LABELS: Record<ClientStatus, string> = {
   active: 'Activo',
