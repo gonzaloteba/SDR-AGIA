@@ -70,7 +70,7 @@ export function ClientDetailTabs({
       )}
 
       {activeTab === 'checkins' && (
-        <CheckinHistory checkIns={checkIns} />
+        <CheckinHistory checkIns={checkIns} clientId={clientId} />
       )}
 
       {activeTab === 'calls' && (

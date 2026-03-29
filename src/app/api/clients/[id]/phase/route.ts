@@ -31,9 +31,11 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    const { data: coach } = await userSupabase.from('coaches').select('role').eq('id', user.id).single()
+    // Use admin client for role check to avoid RLS restrictions on coaches table
+    const adminSupa = getAdminClient()
+    const { data: coach } = await adminSupa.from('coaches').select('role').eq('id', user.id).single()
     if (coach?.role !== 'admin') {
-      const { data: client } = await userSupabase.from('clients').select('coach_id').eq('id', id).single()
+      const { data: client } = await adminSupa.from('clients').select('coach_id').eq('id', id).single()
       if (!client || client.coach_id !== user.id) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
       }
