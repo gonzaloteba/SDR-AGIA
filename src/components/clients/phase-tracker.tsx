@@ -77,8 +77,10 @@ export function PhaseTracker({ clientId, currentPhase, startDate, endDate, phase
 
       if (!res.ok) {
         const text = await res.text()
-        console.error('Phase update failed:', text)
-        toast('No se pudo cambiar la fase. Intenta de nuevo.', 'error')
+        console.error('Phase update failed:', res.status, text)
+        let detail = ''
+        try { detail = JSON.parse(text)?.error ?? '' } catch { /* ignore */ }
+        toast(`No se pudo cambiar la fase (${res.status}). ${detail}`, 'error')
         return
       }
 
