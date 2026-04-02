@@ -5,6 +5,40 @@ import type { AdminClient } from '@/lib/supabase/admin'
 /** Content types that browsers cannot display natively and need conversion */
 const NEEDS_CONVERSION = ['image/heic', 'image/heif']
 
+/** HEIC ftyp brands used for magic-byte detection */
+const HEIC_BRANDS = ['heic', 'heix', 'hevc', 'hevx', 'mif1']
+
+/**
+ * Detect whether a buffer contains HEIC/HEIF data by checking magic bytes.
+ * Falls back to content-type / file-type string when provided.
+ */
+function isHeicData(buffer: Buffer, contentType?: string): boolean {
+  if (contentType && NEEDS_CONVERSION.some((t) => contentType.includes(t))) return true
+  if (buffer.length > 12) {
+    const hasFtyp = buffer.toString('ascii', 4, 8) === 'ftyp'
+    if (hasFtyp) {
+      const brand = buffer.toString('ascii', 8, 12)
+      if (HEIC_BRANDS.includes(brand)) return true
+    }
+  }
+  return false
+}
+
+/**
+ * Convert a HEIC/HEIF buffer to JPEG if needed.
+ * Returns `{ buffer, contentType }` — unchanged if no conversion was required.
+ */
+export async function convertHeicBufferIfNeeded(
+  buffer: Buffer,
+  contentType: string
+): Promise<{ buffer: Buffer; contentType: string }> {
+  if (!isHeicData(buffer, contentType)) return { buffer, contentType }
+  const converted = Buffer.from(
+    await heicConvert({ buffer, format: 'JPEG', quality: 0.85 })
+  )
+  return { buffer: converted, contentType: 'image/jpeg' }
+}
+
 /**
  * Build fetch headers for downloading a photo URL.
  * Typeform file URLs require Bearer token authentication.

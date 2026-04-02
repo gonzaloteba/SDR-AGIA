@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
+import { convertHeicBufferIfNeeded } from '@/lib/photo-storage'
 import { logger } from '@/lib/logger'
 
 const log = logger('api:checkins')
@@ -36,9 +37,13 @@ export async function POST(request: NextRequest) {
     // Upload photos
     const uploadedUrls: string[] = []
     for (const file of files) {
-      const buffer = Buffer.from(await file.arrayBuffer())
-      const ext = file.type.includes('png') ? 'png'
-        : file.type.includes('webp') ? 'webp'
+      const rawBuffer = Buffer.from(await file.arrayBuffer())
+
+      // Convert HEIC/HEIF to JPEG so browsers can display the photo
+      const { buffer, contentType } = await convertHeicBufferIfNeeded(rawBuffer, file.type || 'image/jpeg')
+
+      const ext = contentType.includes('png') ? 'png'
+        : contentType.includes('webp') ? 'webp'
         : 'jpg'
       const timestamp = Date.now()
       const path = `clients/${clientId}/checkin-${timestamp}-${Math.random().toString(36).slice(2, 6)}.${ext}`
@@ -46,7 +51,7 @@ export async function POST(request: NextRequest) {
       const { error: uploadError } = await supabase.storage
         .from('client-photos')
         .upload(path, buffer, {
-          contentType: file.type || 'image/jpeg',
+          contentType,
           upsert: false,
         })
 
