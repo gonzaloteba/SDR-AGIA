@@ -1,5 +1,6 @@
 import { Phone, Video, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
+import { toTitleCase } from '@/lib/utils'
 
 interface ScheduledCall {
   id: string
@@ -75,7 +76,7 @@ export function UpcomingCalls({ calls }: UpcomingCallsProps) {
                     href={`/dashboard/clients/${call.client_id}`}
                     className="text-sm font-medium hover:underline truncate block"
                   >
-                    {call.client.first_name} {call.client.last_name}
+                    {toTitleCase(call.client.first_name)} {toTitleCase(call.client.last_name)}
                   </Link>
                   <p className="text-xs text-muted-foreground">
                     {formattedDate} a las {formattedTime}

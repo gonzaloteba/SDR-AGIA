@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Plus, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { cn, inputClass, textareaClass } from '@/lib/utils'
+import { cn, inputClass, textareaClass, toTitleCase } from '@/lib/utils'
 import { SEVERITY_LABELS } from '@/lib/constants'
 import { useToast } from '@/components/ui/toast'
 import type { AlertSeverity } from '@/lib/types'
@@ -112,7 +112,7 @@ export function CreateAlertDialog({ clientId, clientName, clients }: CreateAlert
                   <option value="">Seleccionar cliente...</option>
                   {clients.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.first_name} {c.last_name}
+                      {toTitleCase(c.first_name)} {toTitleCase(c.last_name)}
                     </option>
                   ))}
                 </select>

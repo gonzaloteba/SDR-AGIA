@@ -53,7 +53,7 @@ export async function generatePlanPdf(
   let y = height - 130
 
   // Draw client name
-  const nameText = sanitizeForPdf(clientName.toUpperCase())
+  const nameText = sanitizeForPdf(clientName)
   const nameWidth = helveticaBold.widthOfTextAtSize(nameText, 11)
   page.drawText(nameText, {
     x: (width - nameWidth) / 2,

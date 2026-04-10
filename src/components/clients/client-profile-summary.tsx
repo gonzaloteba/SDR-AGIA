@@ -1,5 +1,6 @@
 import { User, MapPin, Phone, Mail, Ruler, Weight, Activity, Target, AlertCircle, Calendar, Trophy, Dumbbell, Moon, Zap, Brain, FileText, Image as ImageIcon, Clock, Briefcase, Utensils, Coffee, BedDouble, Sun } from 'lucide-react'
 import { PHASE_LABELS } from '@/lib/constants'
+import { toTitleCase } from '@/lib/utils'
 import type { Client, NutritionPhase } from '@/lib/types'
 
 interface ClientProfileSummaryProps {
@@ -60,7 +61,7 @@ export function ClientProfileSummary({ client }: ClientProfileSummaryProps) {
           <InfoRow
             icon={User}
             label="Nombre completo"
-            value={`${client.first_name} ${client.last_name}`}
+            value={`${toTitleCase(client.first_name)} ${toTitleCase(client.last_name)}`}
           />
           <InfoRow
             icon={Calendar}

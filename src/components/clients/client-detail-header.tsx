@@ -8,7 +8,7 @@ import { PHASE_LABELS, BADGE_CONFIG } from '@/lib/constants'
 import { getDaysRemaining } from '@/lib/health-score'
 import { StatusDropdown } from '@/components/clients/status-dropdown'
 import { updateClientEndDate, toggleClientBadge, deleteClient } from '@/app/dashboard/clients/[id]/actions'
-import { cn } from '@/lib/utils'
+import { cn, toTitleCase } from '@/lib/utils'
 import type { Client, NutritionPhase } from '@/lib/types'
 
 interface ClientDetailHeaderProps {
@@ -96,7 +96,7 @@ export function ClientDetailHeader({ client, alertCount }: ClientDetailHeaderPro
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold">
-                {client.first_name} {client.last_name}
+                {toTitleCase(client.first_name)} {toTitleCase(client.last_name)}
               </h1>
               <StatusDropdown
                 clientId={client.id}
@@ -184,7 +184,7 @@ export function ClientDetailHeader({ client, alertCount }: ClientDetailHeaderPro
                 const url = URL.createObjectURL(blob)
                 const a = document.createElement('a')
                 a.href = url
-                a.download = `Plan Alimentacion - ${client.first_name} ${client.last_name}.pdf`
+                a.download = `Plan Alimentacion - ${toTitleCase(client.first_name)} ${toTitleCase(client.last_name)}.pdf`
                 a.click()
                 URL.revokeObjectURL(url)
               } catch (err) {
@@ -242,7 +242,7 @@ export function ClientDetailHeader({ client, alertCount }: ClientDetailHeaderPro
           <div className="mx-4 w-full max-w-sm rounded-xl border bg-card p-6 shadow-lg">
             <h3 className="text-lg font-semibold">Eliminar cliente</h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              Se eliminará a <strong>{client.first_name} {client.last_name}</strong> y todos sus datos asociados (check-ins, llamadas, alertas, planes). Esta acción no se puede deshacer.
+              Se eliminará a <strong>{toTitleCase(client.first_name)} {toTitleCase(client.last_name)}</strong> y todos sus datos asociados (check-ins, llamadas, alertas, planes). Esta acción no se puede deshacer.
             </p>
             <div className="mt-4 flex justify-end gap-2">
               <button

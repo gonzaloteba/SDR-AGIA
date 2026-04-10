@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { AlertTriangle, CheckCircle, Cake, Phone, StickyNote } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, toTitleCase } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { ALERT_TYPE_LABELS, SEVERITY_COLORS, SEVERITY_LABELS } from '@/lib/constants'
@@ -121,7 +121,7 @@ export function AlertList({ alerts, clients }: AlertListProps) {
                       href={`/dashboard/clients/${alert.client_id}`}
                       className="font-medium hover:underline"
                     >
-                      {alert.client?.first_name} {alert.client?.last_name}
+                      {alert.client?.first_name ? toTitleCase(alert.client.first_name) : ''} {alert.client?.last_name ? toTitleCase(alert.client.last_name) : ''}
                     </Link>
                     <span
                       className={cn(

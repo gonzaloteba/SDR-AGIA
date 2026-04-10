@@ -3,6 +3,7 @@ import { differenceInDays, startOfMonth, getWeekOfMonth } from 'date-fns'
 import { getAdminClient } from '@/lib/supabase/admin'
 import { CHECKIN_GRACE_DAYS, PHASE_ALERT_DAYS_BEFORE } from '@/lib/constants'
 import { logger } from '@/lib/logger'
+import { toTitleCase } from '@/lib/utils'
 
 export const maxDuration = 30
 
@@ -128,7 +129,7 @@ export async function POST(request: NextRequest) {
               client_id: client.id,
               type: 'missed_checkin',
               severity: 'high',
-              message: `${client.first_name} ${client.last_name} no ha enviado check-in en ${daysSinceCheckin} días`,
+              message: `${toTitleCase(client.first_name)} ${toTitleCase(client.last_name)} no ha enviado check-in en ${daysSinceCheckin} días`,
             })
           }
         }
@@ -153,7 +154,7 @@ export async function POST(request: NextRequest) {
                 client_id: client.id,
                 type: 'phase_change',
                 severity: daysUntilPhaseChange <= 1 ? 'high' : 'medium',
-                message: `${client.first_name} ${client.last_name} cambia a ${phaseNames[nextPhase] || `fase ${nextPhase}`} en ${daysUntilPhaseChange} días${customNote}. Preparar indicaciones de alimentación.`,
+                message: `${toTitleCase(client.first_name)} ${toTitleCase(client.last_name)} cambia a ${phaseNames[nextPhase] || `fase ${nextPhase}`} en ${daysUntilPhaseChange} días${customNote}. Preparar indicaciones de alimentación.`,
               })
             }
           }
@@ -166,7 +167,7 @@ export async function POST(request: NextRequest) {
               client_id: client.id,
               type: 'renewal_approaching',
               severity: 'medium',
-              message: `Contactar a ${client.first_name} ${client.last_name} para renovación (programa termina en ${daysUntilEnd} días)`,
+              message: `Contactar a ${toTitleCase(client.first_name)} ${toTitleCase(client.last_name)} para renovación (programa termina en ${daysUntilEnd} días)`,
             })
           }
         }
@@ -183,7 +184,7 @@ export async function POST(request: NextRequest) {
                   client_id: client.id,
                   type: 'training_plan_expiring',
                   severity: 'medium',
-                  message: `Plan de entrenamiento de ${client.first_name} ${client.last_name} vence en ${daysUntilPlanEnd} días`,
+                  message: `Plan de entrenamiento de ${toTitleCase(client.first_name)} ${toTitleCase(client.last_name)} vence en ${daysUntilPlanEnd} días`,
                 })
               }
             }
@@ -202,7 +203,7 @@ export async function POST(request: NextRequest) {
               client_id: client.id,
               type: 'no_call_logged',
               severity: 'high',
-              message: `${client.first_name} ${client.last_name}: ${callsThisMonth} llamadas registradas de ${expectedCalls} esperadas este mes`,
+              message: `${toTitleCase(client.first_name)} ${toTitleCase(client.last_name)}: ${callsThisMonth} llamadas registradas de ${expectedCalls} esperadas este mes`,
             })
           }
         }
@@ -214,7 +215,7 @@ export async function POST(request: NextRequest) {
               client_id: client.id,
               type: 'program_ending',
               severity: 'low',
-              message: `Programa de ${client.first_name} ${client.last_name} termina en ${daysUntilEnd} días`,
+              message: `Programa de ${toTitleCase(client.first_name)} ${toTitleCase(client.last_name)} termina en ${daysUntilEnd} días`,
             })
           }
         }
@@ -228,7 +229,7 @@ export async function POST(request: NextRequest) {
               client_id: client.id,
               type: 'birthday',
               severity: 'low',
-              message: `¡Hoy es el cumpleaños de ${client.first_name} ${client.last_name}! Cumple ${age} años 🎂`,
+              message: `¡Hoy es el cumpleaños de ${toTitleCase(client.first_name)} ${toTitleCase(client.last_name)}! Cumple ${age} años 🎂`,
             })
           }
         }
@@ -265,7 +266,7 @@ export async function POST(request: NextRequest) {
           client_id: call.client_id,
           type: 'upcoming_call',
           severity: 'medium',
-          message: `Llamada programada con ${client.first_name} ${client.last_name} hoy a las ${formattedTime}`,
+          message: `Llamada programada con ${toTitleCase(client.first_name)} ${toTitleCase(client.last_name)} hoy a las ${formattedTime}`,
         })
       }
     }

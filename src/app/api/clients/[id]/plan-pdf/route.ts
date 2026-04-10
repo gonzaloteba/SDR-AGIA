@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { generateRoutine } from '@/lib/routine-ai'
 import { generatePlanPdf } from '@/lib/pdf-generator'
+import { toTitleCase } from '@/lib/utils'
 import type { Client } from '@/lib/types'
 
 export const maxDuration = 60
@@ -51,11 +52,11 @@ export async function POST(
     }
 
     // Generate PDF with routine embedded in page 3
-    const clientName = `${typedClient.first_name} ${typedClient.last_name}`
+    const clientName = `${toTitleCase(typedClient.first_name)} ${toTitleCase(typedClient.last_name)}`
     const pdfBytes = await generatePlanPdf(clientName, routine)
 
     // Return PDF as downloadable file
-    const fileName = `Plan Alimentacion - ${typedClient.first_name} ${typedClient.last_name}.pdf`
+    const fileName = `Plan Alimentacion - ${toTitleCase(typedClient.first_name)} ${toTitleCase(typedClient.last_name)}.pdf`
     return new NextResponse(Buffer.from(pdfBytes), {
       headers: {
         'Content-Type': 'application/pdf',

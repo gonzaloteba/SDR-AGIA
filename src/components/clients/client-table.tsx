@@ -4,7 +4,7 @@ import { useMemo, useCallback, useState, useRef, useDeferredValue } from 'react'
 import Link from 'next/link'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { Search, Plus, ClipboardList, Cake, ArrowRightCircle, StickyNote } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, toTitleCase } from '@/lib/utils'
 import { PHASE_LABELS, HEALTH_COLORS, BADGE_CONFIG, CHECKIN_GRACE_DAYS } from '@/lib/constants'
 import { StatusDropdown } from '@/components/clients/status-dropdown'
 import { QuickAddCall } from '@/components/clients/quick-add-call'
@@ -195,7 +195,7 @@ export function ClientTable({ clients }: ClientTableProps) {
                         href={`/dashboard/clients/${client.id}${coachSuffix}`}
                         className="font-medium hover:underline"
                       >
-                        {client.first_name} {client.last_name}
+                        {toTitleCase(client.first_name)} {toTitleCase(client.last_name)}
                       </Link>
                       {client.is_birthday_today && (
                         <span
