@@ -138,6 +138,7 @@ export interface Call {
   coach_actions: string | null
   coach_actions_completed: boolean
   coach_actions_completed_items: number[]
+  positive_highlights: string | null
   created_at: string
 }
 

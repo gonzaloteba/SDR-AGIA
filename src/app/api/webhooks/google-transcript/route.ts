@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAdminClient } from '@/lib/supabase/admin'
 import { getDefaultCoachId } from '@/lib/auth'
 import { findClientByName } from '@/lib/typeform-helpers'
-import { generateCoachActions, generateTranscriptSummary } from '@/lib/transcript-ai'
+import { generateCoachActions, generateTranscriptSummary, generatePositiveHighlights } from '@/lib/transcript-ai'
 
 /**
  * POST /api/webhooks/google-transcript
@@ -78,9 +78,10 @@ export async function POST(request: NextRequest) {
       const clientNameForUpdate = body.client_first_name
         ? `${body.client_first_name} ${body.client_last_name || ''}`.trim()
         : undefined
-      const [updatedActions, updatedSummary] = await Promise.all([
+      const [updatedActions, updatedSummary, updatedHighlights] = await Promise.all([
         generateCoachActions(transcript, clientNameForUpdate),
         generateTranscriptSummary(transcript, clientNameForUpdate),
+        generatePositiveHighlights(transcript, clientNameForUpdate),
       ])
 
       // Update transcript on existing call
@@ -92,6 +93,7 @@ export async function POST(request: NextRequest) {
           ...(body.notes ? { notes: body.notes } : {}),
           ...(updatedActions ? { coach_actions: updatedActions, coach_actions_completed: false } : {}),
           ...(updatedSummary ? { transcript_summary: updatedSummary } : {}),
+          ...(updatedHighlights ? { positive_highlights: updatedHighlights } : {}),
         })
         .eq('id', existingCall.id)
 
@@ -167,7 +169,7 @@ export async function POST(request: NextRequest) {
       scheduledCall = data
     }
 
-    // Fallback: if client not resolved, try to find a pre-scheduled call
+    // Fallback 1: if client not resolved, try to find a pre-scheduled call
     // by matching the Google Meet link (Calendly stores the same meet_link)
     if (!scheduledCall && body.meet_link) {
       const { data } = await supabase
@@ -182,6 +184,21 @@ export async function POST(request: NextRequest) {
         scheduledCall = data
         // Inherit client_id from the pre-scheduled call
         if (!clientId && data.client_id) clientId = data.client_id
+      }
+    }
+
+    // Fallback 2: if still no match, try to find the ONLY unmatched scheduled
+    // call for this date. If there's exactly one, it's almost certainly the right one.
+    if (!scheduledCall) {
+      const { data: dateMatches } = await supabase
+        .from('calls')
+        .select('id, client_id')
+        .eq('call_date', callDate)
+        .not('scheduled_at', 'is', null)
+        .is('transcript', null)
+      if (dateMatches && dateMatches.length === 1) {
+        scheduledCall = dateMatches[0]
+        if (!clientId && dateMatches[0].client_id) clientId = dateMatches[0].client_id
       }
     }
 
@@ -207,17 +224,19 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      // Generate coach actions and summary
+      // Generate coach actions, summary, and positive highlights
       const clientName = body.client_first_name
         ? `${body.client_first_name} ${body.client_last_name || ''}`.trim()
         : undefined
-      const [coachActions, transcriptSummary] = await Promise.all([
+      const [coachActions, transcriptSummary, positiveHighlights] = await Promise.all([
         generateCoachActions(transcript, clientName),
         generateTranscriptSummary(transcript, clientName),
+        generatePositiveHighlights(transcript, clientName),
       ])
       const aiUpdates: Record<string, unknown> = {}
       if (coachActions) aiUpdates.coach_actions = coachActions
       if (transcriptSummary) aiUpdates.transcript_summary = transcriptSummary
+      if (positiveHighlights) aiUpdates.positive_highlights = positiveHighlights
       if (Object.keys(aiUpdates).length > 0) {
         await supabase
           .from('calls')
@@ -272,17 +291,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Generate coach actions and summary from transcript using AI
+    // Generate coach actions, summary, and positive highlights from transcript using AI
     const clientName = body.client_first_name
       ? `${body.client_first_name} ${body.client_last_name || ''}`.trim()
       : undefined
-    const [coachActions, transcriptSummary] = await Promise.all([
+    const [coachActions, transcriptSummary, positiveHighlights] = await Promise.all([
       generateCoachActions(transcript, clientName),
       generateTranscriptSummary(transcript, clientName),
+      generatePositiveHighlights(transcript, clientName),
     ])
     const newCallAiUpdates: Record<string, unknown> = {}
     if (coachActions) newCallAiUpdates.coach_actions = coachActions
     if (transcriptSummary) newCallAiUpdates.transcript_summary = transcriptSummary
+    if (positiveHighlights) newCallAiUpdates.positive_highlights = positiveHighlights
     if (Object.keys(newCallAiUpdates).length > 0) {
       await supabase
         .from('calls')

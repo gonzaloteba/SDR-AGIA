@@ -74,6 +74,15 @@ function syncTranscripts() {
       const callDate = extractDateFromFile(file);
       const clientName = extractClientName(fileName);
 
+      // Try to extract a Google Meet link from the transcript content
+      const meetLink = extractMeetLinkFromTranscript(transcript);
+
+      // If filename didn't give us a client name, try extracting from transcript content
+      let finalClientName = clientName;
+      if (!finalClientName.firstName) {
+        finalClientName = extractClientNameFromTranscript(transcript);
+      }
+
       // Build the payload
       const payload = {
         google_event_id: file.getId(),
@@ -82,11 +91,15 @@ function syncTranscripts() {
         duration_minutes: 15,
       };
 
-      if (clientName.firstName) {
-        payload.client_first_name = clientName.firstName;
+      if (meetLink) {
+        payload.meet_link = meetLink;
       }
-      if (clientName.lastName) {
-        payload.client_last_name = clientName.lastName;
+
+      if (finalClientName.firstName) {
+        payload.client_first_name = finalClientName.firstName;
+      }
+      if (finalClientName.lastName) {
+        payload.client_last_name = finalClientName.lastName;
       }
 
       // Send to dashboard
@@ -188,6 +201,93 @@ function extractClientName(fileName) {
   }
 
   return { firstName: parts[0] || null, lastName: null };
+}
+
+// ============================================
+// HELPERS — Extract data from transcript content
+// ============================================
+
+/**
+ * Try to extract a Google Meet link from the transcript content.
+ * Gemini notes sometimes include the meet link in the document body.
+ */
+function extractMeetLinkFromTranscript(transcript) {
+  var match = transcript.match(/https:\/\/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}/i);
+  return match ? match[0] : null;
+}
+
+/**
+ * Try to extract the client (non-coach) participant name from transcript content.
+ * Gemini notes often list participants at the top, e.g.:
+ *   "Participantes: Marcel Despagne, Tony Tirado Zalud"
+ *   "Asistentes: Elvis Florentino, Tony Zalud"
+ *
+ * We look for participant lines and exclude known coach names.
+ */
+function extractClientNameFromTranscript(transcript) {
+  // Known coach names to exclude (case-insensitive)
+  var coachNames = ['tony', 'antonio', 'tirado', 'zalud', 'admisiones', 'andrés', 'andres'];
+
+  // Try multiple patterns for participant lists
+  var patterns = [
+    /(?:participantes|asistentes|attendees|speakers?)[:\s]+([^\n]+)/i,
+    /(?:personas en la llamada|people in call)[:\s]+([^\n]+)/i,
+  ];
+
+  for (var i = 0; i < patterns.length; i++) {
+    var match = transcript.match(patterns[i]);
+    if (match) {
+      var participantLine = match[1].trim();
+      // Split by comma, "y", "and", "&"
+      var names = participantLine.split(/\s*[,&]\s*|\s+y\s+|\s+and\s+/);
+
+      for (var j = 0; j < names.length; j++) {
+        var name = names[j].trim();
+        if (!name || name.length < 2) continue;
+
+        // Check if this is a coach name
+        var isCoach = false;
+        var nameLower = name.toLowerCase();
+        for (var k = 0; k < coachNames.length; k++) {
+          if (nameLower.indexOf(coachNames[k]) !== -1) {
+            isCoach = true;
+            break;
+          }
+        }
+
+        if (!isCoach) {
+          var parts = name.split(/\s+/);
+          return {
+            firstName: parts[0] || null,
+            lastName: parts.slice(1).join(' ') || null,
+          };
+        }
+      }
+    }
+  }
+
+  // Fallback: look for speaker labels in the transcript body like "Marcel:" or "[Marcel Despagne]"
+  var speakerMatch = transcript.match(/^[\[\(]?([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)?)\s*[\]\)]?\s*:/m);
+  if (speakerMatch) {
+    var speakerName = speakerMatch[1].trim();
+    var speakerLower = speakerName.toLowerCase();
+    var isCoachSpeaker = false;
+    for (var m = 0; m < coachNames.length; m++) {
+      if (speakerLower.indexOf(coachNames[m]) !== -1) {
+        isCoachSpeaker = true;
+        break;
+      }
+    }
+    if (!isCoachSpeaker) {
+      var speakerParts = speakerName.split(/\s+/);
+      return {
+        firstName: speakerParts[0] || null,
+        lastName: speakerParts.slice(1).join(' ') || null,
+      };
+    }
+  }
+
+  return { firstName: null, lastName: null };
 }
 
 // ============================================

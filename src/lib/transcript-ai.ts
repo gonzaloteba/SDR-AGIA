@@ -70,6 +70,72 @@ ${transcript.substring(0, 15000)}`,
 }
 
 /**
+ * Extract positive highlights from a coaching call transcript.
+ * These are things the client is doing well, positive progress, or wins
+ * that the coach can mention when following up via WhatsApp.
+ */
+export async function generatePositiveHighlights(
+  transcript: string,
+  clientName?: string
+): Promise<string | null> {
+  const apiKey = process.env.ANTHROPIC_API_KEY
+  if (!apiKey) {
+    log.warn('ANTHROPIC_API_KEY not configured, skipping positive highlights generation')
+    return null
+  }
+
+  try {
+    const client = new Anthropic({ apiKey })
+
+    const clientContext = clientName
+      ? `El cliente se llama ${clientName}.`
+      : 'No se conoce el nombre del cliente.'
+
+    const message = await client.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 512,
+      messages: [
+        {
+          role: 'user',
+          content: `Eres un asistente para un coach de salud y nutrición. Analiza la siguiente llamada de coaching y extrae las COSAS POSITIVAS que se mencionaron sobre el progreso del cliente.
+
+${clientContext}
+
+Reglas:
+- Extrae solo logros, avances, mejoras, buenos hábitos o cualquier cosa positiva que el cliente esté haciendo bien
+- Formato: una cosa positiva por línea, empezando con "✓"
+- Ejemplos: bajó de peso, mejoró su energía, cumplió el plan alimenticio, entrenó consistentemente, mejoró su sueño, etc.
+- Si no hay cosas positivas claras, escribe "✓ Sesión de seguimiento general — sin logros específicos mencionados"
+- Sé conciso y específico, máximo 5 puntos
+- El objetivo es que el coach pueda mencionar estas cosas positivas cuando haga seguimiento por WhatsApp para motivar al cliente
+- Responde SOLO con la lista de cosas positivas, sin introducción ni explicación
+
+Transcript:
+${transcript.substring(0, 15000)}`,
+        },
+      ],
+    })
+
+    const result = message.content[0]
+    if (result.type === 'text' && result.text.trim()) {
+      log.info('Positive highlights generated successfully', {
+        clientName,
+        highlightsLength: result.text.length,
+      })
+      return result.text.trim()
+    }
+
+    return null
+  } catch (error) {
+    log.error('Failed to generate positive highlights', {
+      error: (error as Error).message,
+      clientName,
+    })
+    return null
+  }
+}
+
+/**
  * Analyze a coaching call transcript and extract actionable items for the coach.
  * Returns a string with the coach actions, or null if analysis fails.
  */

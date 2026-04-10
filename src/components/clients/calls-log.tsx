@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Phone, Plus, ChevronDown, ChevronUp, FileText, Video, ExternalLink, ClipboardList, CheckCircle2, Loader2 } from 'lucide-react'
+import { Phone, Plus, ChevronDown, ChevronUp, FileText, Video, ExternalLink, ClipboardList, CheckCircle2, Loader2, Sparkles } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { cn, inputClass, textareaClass } from '@/lib/utils'
@@ -172,6 +172,7 @@ export function CallsLog({ calls, clientId }: CallsLogProps) {
             const hasSummary = !!call.transcript_summary
             const hasTranscript = !!call.transcript
             const hasCoachActions = !!call.coach_actions
+            const hasPositiveHighlights = !!call.positive_highlights
             const actionsPending = hasCoachActions && !call.coach_actions_completed
 
             return (
@@ -183,7 +184,7 @@ export function CallsLog({ calls, clientId }: CallsLogProps) {
                 >
                   <Phone className="mt-0.5 h-4 w-4 text-muted-foreground shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-sm font-medium">
                         {new Date(call.call_date).toLocaleDateString('es-ES', {
                           weekday: 'short',
@@ -197,7 +198,13 @@ export function CallsLog({ calls, clientId }: CallsLogProps) {
                       {(hasSummary || hasTranscript) && (
                         <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-700">
                           <FileText className="h-3 w-3" />
-                          {hasSummary ? 'Resumen' : 'Transcript'}
+                          Resumen
+                        </span>
+                      )}
+                      {hasPositiveHighlights && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-medium text-purple-700">
+                          <Sparkles className="h-3 w-3" />
+                          Positivo
                         </span>
                       )}
                       {call.meet_link && (
@@ -218,11 +225,14 @@ export function CallsLog({ calls, clientId }: CallsLogProps) {
                         </span>
                       )}
                     </div>
-                    {call.notes && (
+                    {hasSummary && (
+                      <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{call.transcript_summary}</p>
+                    )}
+                    {!hasSummary && call.notes && (
                       <p className="mt-1 text-xs text-muted-foreground line-clamp-1">{call.notes}</p>
                     )}
                   </div>
-                  {(hasSummary || hasTranscript || call.notes || hasCoachActions) && (
+                  {(hasSummary || hasTranscript || call.notes || hasCoachActions || hasPositiveHighlights) && (
                     isExpanded
                       ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                       : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
@@ -262,14 +272,15 @@ export function CallsLog({ calls, clientId }: CallsLogProps) {
                         </div>
                       </div>
                     )}
-                    {hasTranscript && !hasSummary && (
+                    {hasPositiveHighlights && (
                       <div>
-                        <p className="text-xs font-medium text-muted-foreground mb-1">
-                          Transcript de Gemini
+                        <p className="text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1.5">
+                          <Sparkles className="h-3.5 w-3.5 text-purple-600" />
+                          Cosas positivas para seguimiento WhatsApp
                         </p>
-                        <div className="max-h-80 overflow-y-auto rounded-lg bg-muted/50 p-3">
-                          <p className="text-xs whitespace-pre-wrap font-mono leading-relaxed">
-                            {call.transcript}
+                        <div className="rounded-lg bg-purple-50/50 border border-purple-100 p-3">
+                          <p className="text-sm whitespace-pre-wrap leading-relaxed">
+                            {call.positive_highlights}
                           </p>
                         </div>
                       </div>
