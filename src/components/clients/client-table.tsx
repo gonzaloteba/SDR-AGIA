@@ -5,10 +5,10 @@ import Link from 'next/link'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { Search, Plus, ClipboardList, Cake, ArrowRightCircle, StickyNote } from 'lucide-react'
 import { cn, toTitleCase } from '@/lib/utils'
-import { PHASE_LABELS, HEALTH_COLORS, BADGE_CONFIG, CHECKIN_GRACE_DAYS } from '@/lib/constants'
+import { HEALTH_COLORS, BADGE_CONFIG, CHECKIN_GRACE_DAYS } from '@/lib/constants'
 import { StatusDropdown } from '@/components/clients/status-dropdown'
 import { QuickAddCall } from '@/components/clients/quick-add-call'
-import type { ClientWithHealth, NutritionPhase } from '@/lib/types'
+import type { ClientWithHealth } from '@/lib/types'
 
 const CLIENT_FILTERS_KEY = 'clientTableFilters'
 
@@ -205,7 +205,6 @@ export function ClientTable({ clients }: ClientTableProps) {
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground w-12"></th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Nombre</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Estado</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Fase</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Días restantes</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Check-in Quincenal</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Llamadas/mes</th>
@@ -214,7 +213,7 @@ export function ClientTable({ clients }: ClientTableProps) {
           <tbody className="divide-y">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-12 text-center text-sm text-muted-foreground">
+                <td colSpan={6} className="px-4 py-12 text-center text-sm text-muted-foreground">
                   No se encontraron clientes
                 </td>
               </tr>
@@ -298,9 +297,6 @@ export function ClientTable({ clients }: ClientTableProps) {
                       clientId={client.id}
                       currentStatus={client.status}
                     />
-                  </td>
-                  <td className="px-4 py-3 text-sm">
-                    {PHASE_LABELS[client.current_phase as NutritionPhase]}
                   </td>
                   <td className="px-4 py-3 text-sm">
                     {client.days_remaining} días
