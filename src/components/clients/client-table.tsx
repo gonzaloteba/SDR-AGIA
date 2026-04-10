@@ -3,7 +3,7 @@
 import { useMemo, useCallback, useState, useRef, useDeferredValue, useEffect } from 'react'
 import Link from 'next/link'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
-import { Search, Plus, ClipboardList, Cake, ArrowRightCircle, StickyNote } from 'lucide-react'
+import { Search, Plus, ClipboardList, Cake, ArrowRightCircle, StickyNote, Info } from 'lucide-react'
 import { cn, toTitleCase } from '@/lib/utils'
 import { HEALTH_COLORS, BADGE_CONFIG, CHECKIN_GRACE_DAYS } from '@/lib/constants'
 import { StatusDropdown } from '@/components/clients/status-dropdown'
@@ -31,6 +31,7 @@ export function ClientTable({ clients }: ClientTableProps) {
 
   // Local state for the search input — completely decoupled from Next.js router
   const [search, setSearchLocal] = useState(searchParam)
+  const [showLegend, setShowLegend] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Restore filters from sessionStorage when returning to the page without filter params
@@ -194,6 +195,72 @@ export function ClientTable({ clients }: ClientTableProps) {
           <Plus className="h-4 w-4" />
           Agregar cliente
         </Link>
+      </div>
+
+      {/* Legend toggle */}
+      <div>
+        <button
+          type="button"
+          onClick={() => setShowLegend((v) => !v)}
+          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <Info className="h-3.5 w-3.5" />
+          {showLegend ? 'Ocultar leyenda' : 'Ver leyenda de indicadores'}
+        </button>
+        {showLegend && (
+          <div className="mt-2 grid gap-x-8 gap-y-1.5 rounded-lg border bg-muted/30 px-4 py-3 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-3">
+            <div className="flex items-center gap-2">
+              <span className="inline-block h-3 w-3 rounded-full bg-green-500" />
+              <span>Sin pendientes &mdash; el cliente está al día</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="inline-block h-3 w-3 rounded-full bg-red-500" />
+              <span>Con pendientes &mdash; alertas, acciones o check-in vencido</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1 rounded-full bg-pink-100 px-2 py-0.5 text-[10px] font-medium text-pink-700">
+                <Cake className="h-3 w-3" />
+                Cumpleaños
+              </span>
+              <span>Hoy es su cumpleaños</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="rounded-full bg-teal-100 px-2 py-0.5 text-[10px] font-medium text-teal-800">Renovado</span>
+              <span>Ha renovado su programa</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-medium text-purple-800">Caso de Éxito</span>
+              <span>Marcado como caso de éxito</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+                <ArrowRightCircle className="h-3 w-3" />
+                Cambio fase
+              </span>
+              <span>Cambio de fase programado</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-medium text-orange-700">
+                <ClipboardList className="h-3 w-3" />
+                N
+              </span>
+              <span>Acciones del coach pendientes</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-medium text-purple-700">
+                <StickyNote className="h-3 w-3" />
+                N
+              </span>
+              <span>Alertas sin resolver</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-800">Sí</span>
+              <span>/</span>
+              <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-medium text-red-800">No</span>
+              <span>Check-in enviado en los últimos 15 días</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Table */}
