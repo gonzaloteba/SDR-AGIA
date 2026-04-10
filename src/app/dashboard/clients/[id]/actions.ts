@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getAdminClient } from '@/lib/supabase/admin'
 import { clientIdSchema, updateEndDateSchema, toggleBadgeSchema, callIdSchema } from '@/lib/validations'
 import { logger } from '@/lib/logger'
-import { generateCoachActions, generateTranscriptSummary, generatePositiveHighlights } from '@/lib/transcript-ai'
+import { generateCoachActions, generateTranscriptSummary, generatePositiveHighlights, ApiKeyMissingError } from '@/lib/transcript-ai'
 
 const log = logger('actions:client')
 
@@ -262,7 +262,7 @@ export async function regenerateCallAI(callId: string) {
     if (positiveHighlights) updates.positive_highlights = positiveHighlights
 
     if (Object.keys(updates).length === 0) {
-      return { success: false, error: 'La AI no pudo generar contenido. Verifica la API key.' }
+      return { success: false, error: 'La AI no generó contenido. Puede ser un error temporal — reintenta en unos minutos.' }
     }
 
     const { error } = await adminSupabase
@@ -278,7 +278,11 @@ export async function regenerateCallAI(callId: string) {
     revalidateDashboard()
     return { success: true }
   } catch (e) {
+    if (e instanceof ApiKeyMissingError) {
+      log.error('ANTHROPIC_API_KEY not configured', { callId })
+      return { success: false, error: 'ANTHROPIC_API_KEY no está configurada en Vercel. Ve a Vercel → Settings → Environment Variables y agrégala.' }
+    }
     log.error('Unexpected error regenerating AI content', { callId, error: (e as Error).message })
-    return { success: false, error: 'Error inesperado' }
+    return { success: false, error: 'Error inesperado al generar contenido' }
   }
 }

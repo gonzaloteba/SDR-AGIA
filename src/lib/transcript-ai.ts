@@ -3,6 +3,22 @@ import { logger } from '@/lib/logger'
 
 const log = logger('transcript:ai')
 
+/** Error thrown when ANTHROPIC_API_KEY is not configured */
+export class ApiKeyMissingError extends Error {
+  constructor() {
+    super('ANTHROPIC_API_KEY no está configurada en las variables de entorno de Vercel')
+    this.name = 'ApiKeyMissingError'
+  }
+}
+
+function getAnthropicClient(): Anthropic {
+  const apiKey = process.env.ANTHROPIC_API_KEY
+  if (!apiKey) {
+    throw new ApiKeyMissingError()
+  }
+  return new Anthropic({ apiKey })
+}
+
 /**
  * Generate a brief summary of a coaching call transcript.
  * The summary gives the coach quick context about what was discussed,
@@ -12,15 +28,9 @@ export async function generateTranscriptSummary(
   transcript: string,
   clientName?: string
 ): Promise<string | null> {
-  const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) {
-    log.warn('ANTHROPIC_API_KEY not configured, skipping transcript summary generation')
-    return null
-  }
+  const client = getAnthropicClient()
 
   try {
-    const client = new Anthropic({ apiKey })
-
     const clientContext = clientName
       ? `El cliente se llama ${clientName}.`
       : 'No se conoce el nombre del cliente.'
@@ -61,6 +71,7 @@ ${transcript.substring(0, 15000)}`,
 
     return null
   } catch (error) {
+    if (error instanceof ApiKeyMissingError) throw error
     log.error('Failed to generate transcript summary', {
       error: (error as Error).message,
       clientName,
@@ -78,15 +89,9 @@ export async function generatePositiveHighlights(
   transcript: string,
   clientName?: string
 ): Promise<string | null> {
-  const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) {
-    log.warn('ANTHROPIC_API_KEY not configured, skipping positive highlights generation')
-    return null
-  }
+  const client = getAnthropicClient()
 
   try {
-    const client = new Anthropic({ apiKey })
-
     const clientContext = clientName
       ? `El cliente se llama ${clientName}.`
       : 'No se conoce el nombre del cliente.'
@@ -127,6 +132,7 @@ ${transcript.substring(0, 15000)}`,
 
     return null
   } catch (error) {
+    if (error instanceof ApiKeyMissingError) throw error
     log.error('Failed to generate positive highlights', {
       error: (error as Error).message,
       clientName,
@@ -143,15 +149,9 @@ export async function generateCoachActions(
   transcript: string,
   clientName?: string
 ): Promise<string | null> {
-  const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) {
-    log.warn('ANTHROPIC_API_KEY not configured, skipping coach actions generation')
-    return null
-  }
+  const client = getAnthropicClient()
 
   try {
-    const client = new Anthropic({ apiKey })
-
     const clientContext = clientName
       ? `El cliente se llama ${clientName}.`
       : 'No se conoce el nombre del cliente.'
@@ -191,6 +191,7 @@ ${transcript.substring(0, 15000)}`,
 
     return null
   } catch (error) {
+    if (error instanceof ApiKeyMissingError) throw error
     log.error('Failed to generate coach actions', {
       error: (error as Error).message,
       clientName,
