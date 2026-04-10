@@ -10,7 +10,7 @@
     },
     {
       "path": "/api/cron/regenerate-call-ai",
-      "schedule": "*/30 * * * *"
+      "schedule": "*/10 * * * *"
     }
   ]
 }
