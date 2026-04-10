@@ -1,6 +1,7 @@
 import { User, MapPin, Phone, Mail, Ruler, Weight, Activity, Target, AlertCircle, Calendar, Trophy, Dumbbell, Moon, Zap, Brain, FileText, Image as ImageIcon, Clock, Briefcase, Utensils, Coffee, BedDouble, Sun } from 'lucide-react'
 import { PHASE_LABELS } from '@/lib/constants'
 import { toTitleCase } from '@/lib/utils'
+import { CollapsibleColumn } from '@/components/clients/collapsible-column'
 import type { Client, NutritionPhase } from '@/lib/types'
 
 interface ClientProfileSummaryProps {
@@ -150,6 +151,7 @@ export function ClientProfileSummary({ client }: ClientProfileSummaryProps) {
 
         {/* Program Info */}
         <div className="px-6 py-4 space-y-0">
+          <CollapsibleColumn>
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">Programa y Objetivos</p>
 
           <InfoRow
@@ -313,6 +315,7 @@ export function ClientProfileSummary({ client }: ClientProfileSummaryProps) {
             label="Closer"
             value={client.closer}
           />
+          </CollapsibleColumn>
         </div>
       </div>
     </div>
