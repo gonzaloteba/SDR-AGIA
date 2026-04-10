@@ -7,10 +7,6 @@
     {
       "path": "/api/calendly/sync",
       "schedule": "0 9 * * *"
-    },
-    {
-      "path": "/api/cron/regenerate-call-ai",
-      "schedule": "0 7 * * *"
     }
   ]
 }
