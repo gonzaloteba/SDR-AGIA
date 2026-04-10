@@ -83,7 +83,7 @@ export default async function DashboardPage({ searchParams }: Props) {
     .order('scheduled_at', { ascending: true })
     .limit(10)
 
-  const [clientsResult, checkinsResult, callsResult, alertsResult, allClientsResult, coachActionsResult, upcomingCallsResult] = await Promise.all([
+  const [clientsResult, checkinsResult, , alertsResult, allClientsResult, coachActionsResult, upcomingCallsResult] = await Promise.all([
     safe(clientsQuery),
     safe(supabase
       .from('check_ins')

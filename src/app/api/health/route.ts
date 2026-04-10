@@ -13,7 +13,7 @@ export async function GET() {
     const { error } = await supabase.from('coaches').select('id').limit(1)
     checks.database = error ? `error: ${error.message}` : 'connected'
     if (error) checks.status = 'degraded'
-  } catch (e) {
+  } catch {
     checks.database = 'unreachable'
     checks.status = 'degraded'
   }

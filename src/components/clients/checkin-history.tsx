@@ -57,13 +57,11 @@ function TrendDown({ value }: { value: number }) {
 function PhotoGallery({
   photos,
   date,
-  checkInId,
   onDelete,
   onUpload,
 }: {
   photos: string[]
   date: string
-  checkInId: string
   onDelete?: (url: string) => void
   onUpload?: (files: FileList) => void
 }) {
@@ -271,7 +269,6 @@ function CheckinCard({
       <PhotoGallery
         photos={photos}
         date={new Date(checkIn.submitted_at).toISOString().split('T')[0]}
-        checkInId={checkIn.id}
         onDelete={onDeletePhoto ? (url) => onDeletePhoto(checkIn.id, url) : undefined}
         onUpload={onUploadPhotos ? (files) => onUploadPhotos(checkIn.id, files) : undefined}
       />

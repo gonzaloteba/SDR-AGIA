@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createHmac } from 'crypto'
 import { getAdminClient } from '@/lib/supabase/admin'
-import { getEventInvitees, extractMeetLink } from '@/lib/calendly'
+import { getEventInvitees } from '@/lib/calendly'
 import { findClientInList } from '@/lib/typeform-helpers'
-import { escapeLikePattern } from '@/lib/api-auth'
 import { logger } from '@/lib/logger'
 
 const log = logger('api:webhooks:calendly')

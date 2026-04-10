@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAdminClient } from '@/lib/supabase/admin'
+import { escapeLikePattern } from '@/lib/api-auth'
 import { logger } from '@/lib/logger'
 
 const log = logger('api:migrate:assign-coach')
@@ -130,7 +131,7 @@ export async function POST(request: NextRequest) {
     if (coachId) {
       coachQuery = coachQuery.eq('id', coachId)
     } else {
-      coachQuery = coachQuery.ilike('full_name', `%${coachName}%`)
+      coachQuery = coachQuery.ilike('full_name', `%${escapeLikePattern(coachName!)}%`)
     }
 
     const { data: coaches, error: coachError } = await coachQuery

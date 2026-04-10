@@ -81,7 +81,8 @@ describe('clientFormSchema', () => {
   })
 
   it('rejects missing first_name', () => {
-    const { first_name, ...rest } = validClient
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { first_name: _, ...rest } = validClient
     expect(clientFormSchema.safeParse(rest).success).toBe(false)
   })
 

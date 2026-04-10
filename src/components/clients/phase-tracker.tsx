@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { PHASE_LABELS, PHASE_DURATIONS_DAYS, PHASE_ALERT_DAYS_BEFORE } from '@/lib/constants'
 import { differenceInDays } from 'date-fns'
-import { AlertTriangle, Clock, Pencil, Check, X } from 'lucide-react'
+import { AlertTriangle, Pencil, Check, X } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
 import type { NutritionPhase } from '@/lib/types'
 

@@ -115,7 +115,6 @@ function shouldCreateBirthdayAlert(
   if (!client.birth_date) return null
   const birth = new Date(client.birth_date + 'T12:00:00')
   if (birth.getMonth() === now.getMonth() && birth.getDate() === now.getDate()) {
-    const age = now.getFullYear() - birth.getFullYear()
     return {
       client_id: client.client_id,
       type: 'birthday',

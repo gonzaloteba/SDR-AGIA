@@ -29,7 +29,6 @@ function sanitizeForPdf(text: string): string {
     .replace(/\u2026/g, '...')    // … ellipsis
     .replace(/\u00B7/g, '-')      // · middle dot
     // Strip any remaining non-WinAnsi characters (keep latin-1 range)
-    // eslint-disable-next-line no-control-regex
     .replace(/[^\x00-\xFF]/g, '')
 }
 

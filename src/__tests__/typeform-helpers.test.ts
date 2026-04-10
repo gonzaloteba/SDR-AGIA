@@ -136,7 +136,6 @@ describe('mapAuditFields', () => {
   })
 
   it('maps diagnosis from boolean', () => {
-    const answerMap = new Map<string, unknown>()
     // We need the diagnosis field ID - it's not in the mapping, so skip
     // Diagnosis doesn't seem to be in AUDIT_FIELD_MAP
   })
