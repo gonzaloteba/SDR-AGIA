@@ -1,401 +1,136 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
 import { getAdminClient } from '@/lib/supabase/admin'
-import { getCurrentUser, getScheduledEvents, getEventInvitees, extractMeetLink } from '@/lib/calendly'
-import { findClientInList } from '@/lib/typeform-helpers'
-import { runTypeformSync } from '@/lib/typeform-sync'
-import { logger } from '@/lib/logger'
+import { getCurrentCoach, isAdmin } from '@/lib/auth'
+import type { Coach, UserRole } from '@/lib/types'
 
-const log = logger('actions:settings')
-
-export interface IntegrationStatus {
-  calendly: {
-    configured: boolean
-    accountName: string | null
-    error: string | null
-  }
-  typeform: {
-    configured: boolean
-    error: string | null
-  }
-  supabase: {
-    configured: boolean
-    clientCount: number | null
-    callCount: number | null
-  }
-  envVars: Record<string, boolean>
-}
-
-export async function getIntegrationStatus(): Promise<IntegrationStatus> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return {
-      calendly: { configured: false, accountName: null, error: 'No autenticado' },
-      typeform: { configured: false, error: 'No autenticado' },
-      supabase: { configured: false, clientCount: null, callCount: null },
-      envVars: {},
-    }
+// ── List all coaches ──────────────────────────────────────────────────
+export async function getUsers(): Promise<{ users: Coach[]; error: string | null }> {
+  const coach = await getCurrentCoach()
+  if (!coach || !isAdmin(coach)) {
+    return { users: [], error: 'No autorizado' }
   }
 
-  // Check env vars
-  const envVars: Record<string, boolean> = {
-    NEXT_PUBLIC_SUPABASE_URL: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    SUPABASE_SERVICE_ROLE_KEY: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-    TYPEFORM_WEBHOOK_SECRET: !!process.env.TYPEFORM_WEBHOOK_SECRET,
-    TYPEFORM_API_TOKEN: !!process.env.TYPEFORM_API_TOKEN,
-    CRON_SECRET: !!process.env.CRON_SECRET,
-    CALENDLY_API_TOKEN: !!process.env.CALENDLY_API_TOKEN,
-    GOOGLE_SCRIPT_SECRET: !!process.env.GOOGLE_SCRIPT_SECRET,
-    ANTHROPIC_API_KEY: !!process.env.ANTHROPIC_API_KEY,
-  }
-
-  // Check Calendly
-  let calendly: IntegrationStatus['calendly'] = { configured: false, accountName: null, error: null }
-  if (process.env.CALENDLY_API_TOKEN) {
-    try {
-      const calendlyUser = await getCurrentUser()
-      calendly = { configured: true, accountName: calendlyUser.name, error: null }
-    } catch (err) {
-      calendly = { configured: false, accountName: null, error: (err as Error).message }
-    }
-  } else {
-    calendly = { configured: false, accountName: null, error: 'CALENDLY_API_TOKEN no configurado' }
-  }
-
-  // Check Typeform
-  const typeformConfigured = !!process.env.TYPEFORM_API_TOKEN && !!process.env.TYPEFORM_WEBHOOK_SECRET
-  const typeform: IntegrationStatus['typeform'] = {
-    configured: typeformConfigured,
-    error: typeformConfigured ? null : 'Falta TYPEFORM_API_TOKEN o TYPEFORM_WEBHOOK_SECRET',
-  }
-
-  // Check Supabase data
-  const adminClient = getAdminClient()
-  const [clientsRes, callsRes] = await Promise.all([
-    adminClient.from('clients').select('id', { count: 'exact', head: true }).eq('status', 'active'),
-    adminClient.from('calls').select('id', { count: 'exact', head: true }),
-  ])
-
-  return {
-    calendly,
-    typeform,
-    supabase: {
-      configured: true,
-      clientCount: clientsRes.count ?? 0,
-      callCount: callsRes.count ?? 0,
-    },
-    envVars,
-  }
-}
-
-export async function fixOrphanCalls(): Promise<{ success: boolean; message: string; fixed: number }> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return { success: false, message: 'No autenticado', fixed: 0 }
-  }
-
-  const adminClient = getAdminClient()
-
-  // Get the coach id for the current user
-  const { data: coachRow } = await adminClient
+  const admin = getAdminClient()
+  const { data, error } = await admin
     .from('coaches')
-    .select('id')
-    .eq('id', user.id)
-    .single()
+    .select('*')
+    .order('created_at', { ascending: true })
 
-  if (!coachRow) {
-    return { success: false, message: 'No eres un coach registrado', fixed: 0 }
+  if (error) return { users: [], error: error.message }
+  return { users: data as Coach[], error: null }
+}
+
+// ── Create user ───────────────────────────────────────────────────────
+export async function createUser(
+  email: string,
+  password: string,
+  fullName: string,
+  role: UserRole
+): Promise<{ success: boolean; error: string | null }> {
+  const coach = await getCurrentCoach()
+  if (!coach || !isAdmin(coach)) {
+    return { success: false, error: 'No autorizado' }
   }
 
-  const parts: string[] = []
+  if (!email || !password || !fullName) {
+    return { success: false, error: 'Todos los campos son obligatorios' }
+  }
 
-  // Fix calls without coach_id
-  const { data: orphanCalls } = await adminClient
-    .from('calls')
-    .select('id')
-    .is('coach_id', null)
+  if (password.length < 6) {
+    return { success: false, error: 'La contrasena debe tener al menos 6 caracteres' }
+  }
 
-  if (orphanCalls && orphanCalls.length > 0) {
-    const { error: updateError } = await adminClient
-      .from('calls')
-      .update({ coach_id: coachRow.id })
-      .is('coach_id', null)
+  const admin = getAdminClient()
 
-    if (updateError) {
-      return { success: false, message: `Error al actualizar llamadas: ${updateError.message}`, fixed: 0 }
+  // Create auth user via Supabase Admin API
+  const { data: authData, error: authError } = await admin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+  })
+
+  if (authError) {
+    if (authError.message.includes('already been registered')) {
+      return { success: false, error: 'Ya existe un usuario con ese email' }
     }
-    parts.push(`${orphanCalls.length} llamada(s) asignadas`)
-    log.info('Fixed orphan calls', { count: orphanCalls.length, coachId: coachRow.id })
+    return { success: false, error: authError.message }
   }
 
-  // Fix clients without coach_id — assign ALL to this coach
-  const { data: orphanClients } = await adminClient
-    .from('clients')
-    .select('id')
-    .is('coach_id', null)
+  // Insert into coaches table
+  const { error: insertError } = await admin.from('coaches').insert({
+    id: authData.user.id,
+    full_name: fullName,
+    role,
+  })
 
-  if (orphanClients && orphanClients.length > 0) {
-    const { error: clientUpdateError } = await adminClient
-      .from('clients')
-      .update({ coach_id: coachRow.id })
-      .is('coach_id', null)
-
-    if (clientUpdateError) {
-      return { success: false, message: `Error al actualizar clientes: ${clientUpdateError.message}`, fixed: 0 }
-    }
-    parts.push(`${orphanClients.length} cliente(s) sin coach asignado(s)`)
-    log.info('Fixed orphan clients', { count: orphanClients.length, coachId: coachRow.id })
+  if (insertError) {
+    // Rollback: delete the auth user if coach insert fails
+    await admin.auth.admin.deleteUser(authData.user.id)
+    return { success: false, error: `Error al crear perfil de coach: ${insertError.message}` }
   }
 
-  // Fix clients with invalid coach_id (pointing to a non-existent coach)
-  const { data: allCoachIds } = await adminClient
+  return { success: true, error: null }
+}
+
+// ── Delete user ───────────────────────────────────────────────────────
+export async function deleteUser(
+  userId: string
+): Promise<{ success: boolean; error: string | null }> {
+  const coach = await getCurrentCoach()
+  if (!coach || !isAdmin(coach)) {
+    return { success: false, error: 'No autorizado' }
+  }
+
+  if (userId === coach.id) {
+    return { success: false, error: 'No puedes eliminarte a ti mismo' }
+  }
+
+  const admin = getAdminClient()
+
+  // Delete from coaches table first
+  const { error: deleteCoachError } = await admin
     .from('coaches')
-    .select('id')
-  const validCoachIds = new Set((allCoachIds || []).map(c => c.id))
+    .delete()
+    .eq('id', userId)
 
-  const { data: allClients } = await adminClient
-    .from('clients')
-    .select('id, coach_id')
-    .not('coach_id', 'is', null)
-
-  const invalidClients = (allClients || []).filter(c => !validCoachIds.has(c.coach_id))
-  if (invalidClients.length > 0) {
-    const invalidIds = invalidClients.map(c => c.id)
-    const { error: fixError } = await adminClient
-      .from('clients')
-      .update({ coach_id: coachRow.id })
-      .in('id', invalidIds)
-
-    if (fixError) {
-      return { success: false, message: `Error al reparar coach_id inválidos: ${fixError.message}`, fixed: 0 }
-    }
-    parts.push(`${invalidClients.length} cliente(s) con coach inválido reparado(s)`)
-    log.info('Fixed clients with invalid coach_id', { count: invalidClients.length, coachId: coachRow.id })
+  if (deleteCoachError) {
+    return { success: false, error: `Error al eliminar coach: ${deleteCoachError.message}` }
   }
 
-  if (parts.length === 0) {
-    return { success: true, message: 'Todo está asignado correctamente', fixed: 0 }
+  // Delete auth user
+  const { error: deleteAuthError } = await admin.auth.admin.deleteUser(userId)
+
+  if (deleteAuthError) {
+    return { success: false, error: `Coach eliminado pero error al eliminar cuenta: ${deleteAuthError.message}` }
   }
 
-  return {
-    success: true,
-    message: `${parts.join(', ')} a tu cuenta`,
-    fixed: (orphanCalls?.length || 0) + (orphanClients?.length || 0),
-  }
+  return { success: true, error: null }
 }
 
-export async function syncTypeformNow(): Promise<{
-  success: boolean
-  message: string
-  debug?: string[]
-}> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return { success: false, message: 'No autenticado' }
+// ── Update user role ──────────────────────────────────────────────────
+export async function updateUserRole(
+  userId: string,
+  role: UserRole
+): Promise<{ success: boolean; error: string | null }> {
+  const coach = await getCurrentCoach()
+  if (!coach || !isAdmin(coach)) {
+    return { success: false, error: 'No autorizado' }
   }
 
-  try {
-    const data = await runTypeformSync()
-    const r = data.results
-    const parts: string[] = []
-    if (r?.audit?.created > 0) parts.push(`${r.audit.created} cliente(s) nuevo(s)`)
-    if (r?.audit?.updated > 0) parts.push(`${r.audit.updated} auditoría(s) actualizada(s)`)
-    if (r?.audit?.skipped > 0) parts.push(`${r.audit.skipped} auditoría(s) sin nombre`)
-    if (r?.checkin?.inserted > 0) parts.push(`${r.checkin.inserted} check-in(s) sincronizado(s)`)
-    if (r?.checkin?.skipped > 0) parts.push(`${r.checkin.skipped} check-in(s) ya existente(s)`)
-    if (parts.length === 0) parts.push('No hay datos nuevos')
-
-    const debug = [
-      `Auditorías: ${r.audit.fetched} fetched, ${r.audit.created} created, ${r.audit.updated} updated, ${r.audit.skipped} skipped`,
-      `Check-ins: ${r.checkin.fetched} fetched, ${r.checkin.inserted} inserted, ${r.checkin.skipped} skipped`,
-      ...(r.audit.errors.length > 0 ? [`Errores audit: ${r.audit.errors.join('; ')}`] : []),
-      ...(r.checkin.errors.length > 0 ? [`Errores check-in: ${r.checkin.errors.join('; ')}`] : []),
-      ...r.audit.debug,
-      ...r.checkin.debug,
-    ]
-
-    return { success: true, message: parts.join(', '), debug }
-  } catch (err) {
-    log.error('Manual Typeform sync failed', { error: (err as Error).message })
-    return { success: false, message: `Error: ${(err as Error).message}` }
-  }
-}
-
-export async function syncCalendlyNow(): Promise<{
-  success: boolean
-  message: string
-  synced?: number
-  skipped?: number
-  unmatched?: number
-  unmatchedNames?: string[]
-  debug?: string[]
-}> {
-  // Verify authenticated user
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return { success: false, message: 'No autenticado' }
+  if (userId === coach.id) {
+    return { success: false, error: 'No puedes cambiar tu propio rol' }
   }
 
-  try {
-    const adminClient = getAdminClient()
-    const now = new Date()
-    const maxDate = new Date(now)
-    maxDate.setDate(maxDate.getDate() + 30)
+  const admin = getAdminClient()
+  const { error } = await admin
+    .from('coaches')
+    .update({ role })
+    .eq('id', userId)
 
-    // Check 7 days in the past to catch recent calls
-    const minDate = new Date(now)
-    minDate.setDate(minDate.getDate() - 7)
-
-    // Resolve coach_id for the current user
-    const { data: coachRow } = await adminClient
-      .from('coaches')
-      .select('id')
-      .eq('id', user.id)
-      .single()
-    const coachId = coachRow?.id ?? null
-
-    const calendlyUser = await getCurrentUser()
-    const events = await getScheduledEvents(calendlyUser.uri, minDate.toISOString(), maxDate.toISOString())
-
-    if (events.length === 0) {
-      return { success: true, message: 'No hay eventos en Calendly (últimos 7 días + próximos 30 días)', synced: 0 }
-    }
-
-    // Load ALL clients for name matching (not just active — inactive clients may have calls too)
-    const { data: clients } = await adminClient
-      .from('clients')
-      .select('id, first_name, last_name')
-
-    // Check existing calls
-    const eventUris = events.map(e => e.uri)
-    const { data: existingCalls } = await adminClient
-      .from('calls')
-      .select('calendly_event_uri')
-      .in('calendly_event_uri', eventUris)
-
-    const existingUriSet = new Set(
-      (existingCalls || []).map(c => c.calendly_event_uri)
-    )
-
-    // Also load client emails for email-based matching fallback
-    const { data: clientsWithEmail } = await adminClient
-      .from('clients')
-      .select('id, first_name, last_name, email')
-
-    let synced = 0
-    let skipped = 0
-    let unmatched = 0
-    const unmatchedNames: string[] = []
-    const debug: string[] = []
-
-    debug.push(`Clientes en DB: ${(clients || []).map(c => `${c.first_name} ${c.last_name}`).join(', ')}`)
-
-    for (const event of events) {
-      if (existingUriSet.has(event.uri)) {
-        skipped++
-        continue
-      }
-
-      let invitees
-      try {
-        invitees = await getEventInvitees(event.uri)
-      } catch {
-        continue
-      }
-
-      const activeInvitee = invitees.find(i => i.status === 'active')
-      if (!activeInvitee) continue
-
-      // Split name: handle both "Gonzalo Teba" and concatenated "GonzaloTeba"
-      let rawName = activeInvitee.name.trim()
-      // If name has no spaces but has camelCase (e.g. "GonzaloTeba"), split on uppercase boundaries
-      if (!rawName.includes(' ') && /[a-z][A-Z]/.test(rawName)) {
-        rawName = rawName.replace(/([a-z])([A-Z])/g, '$1 $2')
-      }
-      const nameParts = rawName.split(/\s+/)
-      const firstName = nameParts[0] || ''
-      const lastName = nameParts.slice(1).join(' ') || ''
-
-      debug.push(`Calendly invitee: "${activeInvitee.name}" → split: "${firstName}" "${lastName}" (email: ${activeInvitee.email})`)
-
-      // Try name matching first
-      let matchedClient = findClientInList(clients || [], firstName, lastName)
-
-      // Fallback: try matching by email
-      if (!matchedClient && activeInvitee.email && clientsWithEmail) {
-        const emailLower = activeInvitee.email.toLowerCase().trim()
-        const emailMatch = clientsWithEmail.find(
-          c => c.email && c.email.toLowerCase().trim() === emailLower
-        )
-        if (emailMatch) {
-          matchedClient = { id: emailMatch.id }
-          debug.push(`  → Matched by email to ${emailMatch.first_name} ${emailMatch.last_name}`)
-        }
-      }
-
-      if (!matchedClient) {
-        log.warn('Could not match Calendly invitee', {
-          inviteeName: activeInvitee.name,
-          inviteeEmail: activeInvitee.email,
-        })
-        unmatchedNames.push(`${activeInvitee.name} (${activeInvitee.email})`)
-        unmatched++
-        continue
-      }
-
-      const meetLink = extractMeetLink(event)
-      const callDate = event.start_time.split('T')[0]
-
-      const { error: insertError } = await adminClient.from('calls').insert({
-        client_id: matchedClient.id,
-        coach_id: coachId,
-        call_date: callDate,
-        scheduled_at: event.start_time,
-        calendly_event_uri: event.uri,
-        meet_link: meetLink,
-        duration_minutes: Math.round(
-          (new Date(event.end_time).getTime() - new Date(event.start_time).getTime()) / 60000
-        ),
-        notes: `Llamada programada via Calendly: ${event.name}`,
-      })
-
-      if (insertError) {
-        log.error('Failed to insert call', { error: insertError.message })
-        continue
-      }
-
-      synced++
-      log.info('Manual sync: created call', {
-        clientId: matchedClient.id,
-        clientName: `${firstName} ${lastName}`,
-        scheduledAt: event.start_time,
-      })
-    }
-
-    const parts: string[] = []
-    if (synced > 0) parts.push(`${synced} llamada(s) nueva(s) sincronizada(s)`)
-    if (skipped > 0) parts.push(`${skipped} ya existente(s)`)
-    if (unmatched > 0) parts.push(`${unmatched} sin cliente asociado`)
-    if (unmatchedNames.length > 0) parts.push(`No encontrados: ${unmatchedNames.join(', ')}`)
-    if (parts.length === 0) parts.push('No hay llamadas nuevas para sincronizar')
-
-    return {
-      success: true,
-      message: parts.join('. ') + ` (${events.length} evento(s) en Calendly)`,
-      synced,
-      skipped,
-      unmatched,
-      unmatchedNames,
-      debug,
-    }
-  } catch (err) {
-    log.error('Manual Calendly sync failed', { error: (err as Error).message })
-    return { success: false, message: `Error: ${(err as Error).message}` }
+  if (error) {
+    return { success: false, error: error.message }
   }
+
+  return { success: true, error: null }
 }

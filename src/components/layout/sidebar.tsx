@@ -5,11 +5,11 @@ import { usePathname, useSearchParams } from 'next/navigation'
 import {
   LayoutDashboard,
   Users,
-  Settings,
   LogOut,
   Shield,
   User,
   LinkIcon,
+  UserCog,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
@@ -19,7 +19,10 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Clientes', href: '/dashboard/clients', icon: Users },
   { name: 'Recursos', href: '/dashboard/resources', icon: LinkIcon },
-  { name: 'Configuración', href: '/dashboard/settings', icon: Settings },
+]
+
+const adminNavigation = [
+  { name: 'Usuarios', href: '/dashboard/settings', icon: UserCog },
 ]
 
 interface SidebarProps {
@@ -60,6 +63,25 @@ export function Sidebar({ coachName, coachRole }: SidebarProps) {
               ? pathname === '/dashboard'
               : pathname.startsWith(item.href)
 
+          return (
+            <Link
+              key={item.name}
+              href={`${item.href}${suffix}`}
+              className={cn(
+                'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                isActive
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              )}
+            >
+              <item.icon className="h-5 w-5" />
+              {item.name}
+            </Link>
+          )
+        })}
+
+        {coachRole === 'admin' && adminNavigation.map((item) => {
+          const isActive = pathname.startsWith(item.href)
           return (
             <Link
               key={item.name}
