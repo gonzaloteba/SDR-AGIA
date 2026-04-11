@@ -114,18 +114,6 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         }
       }
 
-      // Resolve existing phase_change alerts
-      const { error: alertError } = await supabase
-        .from('alerts')
-        .update({ is_resolved: true, resolved_at: new Date().toISOString() })
-        .eq('client_id', id)
-        .eq('type', 'phase_change')
-        .eq('is_resolved', false)
-
-      if (alertError) {
-        log.error('Failed to resolve phase_change alerts', { error: alertError.message, clientId: id })
-      }
-
       revalidatePath(`/dashboard/clients/${id}`)
       return NextResponse.json({ success: true })
     }
@@ -172,18 +160,6 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         if (error) {
           return NextResponse.json({ error: error.message }, { status: 500 })
         }
-      }
-
-      // Resolve existing phase_change alerts so cron regenerates with new interval
-      const { error: alertError } = await supabase
-        .from('alerts')
-        .update({ is_resolved: true, resolved_at: new Date().toISOString() })
-        .eq('client_id', id)
-        .eq('type', 'phase_change')
-        .eq('is_resolved', false)
-
-      if (alertError) {
-        log.error('Failed to resolve phase_change alerts', { error: alertError.message, clientId: id })
       }
 
       revalidatePath(`/dashboard/clients/${id}`)
