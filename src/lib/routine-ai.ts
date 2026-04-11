@@ -32,6 +32,7 @@ REGLA CRÍTICA SOBRE CONTENIDO DE ALIMENTACIÓN:
 - Ejemplo incorrecto: "> Primera comida a las 9:00 am: proteína animal (huevos, carne, pescado) + grasa de calidad"
 
 ENTRENAMIENTO Y ALIMENTACIÓN:
+- REGLA FUNDAMENTAL: La hora de entrenamiento del cliente es un dato FIJO e INAMOVIBLE. El cliente entrena cuando puede (por trabajo, familia, etc.) y ese horario NO se modifica. Lo que SÍ se ajusta son los horarios de las comidas alrededor del entrenamiento.
 - Escenario ideal: Entrenamiento en ayunas por la mañana (antes de las 13h).
 - Si el cliente entrena antes de las 13h, se le insta a aguantar el ayuno y romperlo después de entrenar. En este caso SÍ se puede decir "entrena en ayunas".
 - Si el cliente entrena A LAS 13h O DESPUÉS (13h, 14h, 15h, 16h, etc.), se rompe el ayuno ANTES de entrenar y se adelanta la cena para mantener la ventana de ayuno. NUNCA se le pide al cliente mantener el ayuno hasta después de un entrenamiento vespertino/nocturno (a las 13h o después), ya que eso generaría un OMAD involuntario o una ventana de alimentación demasiado corta.
@@ -46,7 +47,7 @@ SUEÑO Y DESCANSO:
 
 REGLA CRÍTICA DE VENTANA DE AYUNO:
 - La ventana de ayuno mínima objetivo es de 14 a 16 horas. Este es un requisito no negociable.
-- Los horarios que el cliente reporta en la auditoría inicial son una REFERENCIA, no una restricción. Tu trabajo es OPTIMIZAR su rutina, no simplemente validar lo que ya hace.
+- Los horarios de COMIDAS que el cliente reporta en la auditoría inicial son una REFERENCIA, no una restricción. Tu trabajo es OPTIMIZAR los horarios de comida, no simplemente validar lo que ya hace. Sin embargo, la hora de entrenamiento y la hora de acostarse/despertar son datos fijos que debes respetar.
 - Si los horarios actuales del cliente no alcanzan al menos 14 horas de ayuno, DEBES ajustar la hora de la cena (adelantándola) y/o la hora del desayuno (retrasándola) para garantizar ese mínimo.
 - Prioriza adelantar la cena antes que retrasar el desayuno, ya que permite más horas libres antes de dormir.
 - Siempre respeta la regla de mínimo 3 horas entre la última ingesta y la hora de acostarse.
