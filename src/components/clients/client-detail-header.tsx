@@ -3,13 +3,14 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft, ExternalLink, Edit, Pencil, Check, X, Loader2, FileDown, Trash2 } from 'lucide-react'
-import { PHASE_LABELS, BADGE_CONFIG } from '@/lib/constants'
+import { ArrowLeft, ExternalLink, Edit, Pencil, Check, X, Loader2, FileDown, Trash2, MapPin } from 'lucide-react'
+import { BADGE_CONFIG } from '@/lib/constants'
 import { getDaysRemaining } from '@/lib/health-score'
 import { StatusDropdown } from '@/components/clients/status-dropdown'
 import { updateClientEndDate, toggleClientBadge, deleteClient } from '@/app/dashboard/clients/[id]/actions'
 import { cn, toTitleCase } from '@/lib/utils'
-import type { Client, NutritionPhase } from '@/lib/types'
+import { inferTimezone } from '@/lib/typeform-mappings'
+import type { Client } from '@/lib/types'
 
 interface ClientDetailHeaderProps {
   client: Client
@@ -120,9 +121,12 @@ export function ClientDetailHeader({ client, alertCount }: ClientDetailHeaderPro
               )}
             </div>
             <div className="mt-1 flex items-center gap-4 text-sm text-muted-foreground">
-              <span>{PHASE_LABELS[client.current_phase as NutritionPhase]}</span>
+              <span>
+                Inicio: {new Date(client.start_date + 'T12:00:00').toLocaleDateString('es-ES')}
+              </span>
               {editing ? (
                 <span className="inline-flex items-center gap-2">
+                  Fin:{' '}
                   <input
                     type="date"
                     value={endDateValue}
@@ -152,14 +156,25 @@ export function ClientDetailHeader({ client, alertCount }: ClientDetailHeaderPro
                   onClick={() => setEditing(true)}
                   className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
                 >
-                  <span>{daysRemaining} días restantes</span>
+                  <span>Fin: {new Date(client.end_date + 'T12:00:00').toLocaleDateString('es-ES')}</span>
                   <Pencil className="h-3 w-3" />
                 </button>
               )}
-              <span>
-                Inicio: {new Date(client.start_date + 'T12:00:00').toLocaleDateString('es-ES')}
-              </span>
-              {client.location && <span>{client.location}</span>}
+              <span>{daysRemaining} días restantes</span>
+              {client.location && (
+                <span className="inline-flex items-center gap-1">
+                  <MapPin className="h-3.5 w-3.5" />
+                  {client.location}
+                  {(() => {
+                    const tz = client.timezone || (client.location ? inferTimezone(client.location) : null)
+                    if (!tz) return null
+                    try {
+                      const time = new Date().toLocaleTimeString('es-ES', { timeZone: tz, hour: '2-digit', minute: '2-digit' })
+                      return ` (${time})`
+                    } catch { return null }
+                  })()}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -285,13 +300,6 @@ export function ClientDetailHeader({ client, alertCount }: ClientDetailHeaderPro
           {client.closer && (
             <span className="text-muted-foreground">
               Closer: <span className="text-foreground">{client.closer}</span>
-            </span>
-          )}
-          {client.renewal_date && (
-            <span className="text-muted-foreground">
-              Renovación: <span className="text-foreground">
-                {new Date(client.renewal_date + 'T12:00:00').toLocaleDateString('es-ES')}
-              </span>
             </span>
           )}
         </div>
