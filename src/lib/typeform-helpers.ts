@@ -76,6 +76,70 @@ export function extractValue(answer: TypeformAnswer): unknown {
 }
 
 // ============================================
+// Client name extraction from transcript
+// ============================================
+
+/** Known coach names to exclude when identifying clients */
+const COACH_NAMES = ['tony', 'antonio', 'tirado', 'zalud', 'admisiones', 'andrés', 'andres']
+
+/**
+ * Extract client (non-coach) name from transcript content.
+ * Mirrors the Google Apps Script extractClientNameFromTranscript() logic.
+ *
+ * Looks for participant lists, speaker labels, and other patterns
+ * commonly found in Gemini-generated transcripts.
+ */
+export function extractClientNameFromTranscript(
+  transcript: string
+): { firstName: string; lastName: string } | null {
+  // 1. Try participant list patterns
+  const patterns = [
+    /(?:participantes|asistentes|attendees|speakers?)[:\s]+([^\n]+)/i,
+    /(?:personas en la llamada|people in call)[:\s]+([^\n]+)/i,
+  ]
+
+  for (const pattern of patterns) {
+    const match = transcript.match(pattern)
+    if (match) {
+      const participantLine = match[1].trim()
+      const names = participantLine.split(/\s*[,&]\s*|\s+y\s+|\s+and\s+/)
+
+      for (const name of names) {
+        const trimmed = name.trim()
+        if (!trimmed || trimmed.length < 2) continue
+
+        const isCoach = COACH_NAMES.some(c => trimmed.toLowerCase().includes(c))
+        if (!isCoach) {
+          const parts = trimmed.split(/\s+/)
+          return {
+            firstName: parts[0],
+            lastName: parts.slice(1).join(' '),
+          }
+        }
+      }
+    }
+  }
+
+  // 2. Speaker labels like "Marcel:" or "[Marcel Despagne]:"
+  const speakerMatch = transcript.match(
+    /^[\[\(]?([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)?)\s*[\]\)]?\s*:/m
+  )
+  if (speakerMatch) {
+    const speakerName = speakerMatch[1].trim()
+    const isCoach = COACH_NAMES.some(c => speakerName.toLowerCase().includes(c))
+    if (!isCoach) {
+      const parts = speakerName.split(/\s+/)
+      return {
+        firstName: parts[0],
+        lastName: parts.slice(1).join(' '),
+      }
+    }
+  }
+
+  return null
+}
+
+// ============================================
 // Client name matching
 // ============================================
 

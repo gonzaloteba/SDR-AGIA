@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAdminClient } from '@/lib/supabase/admin'
 import { getDefaultCoachId } from '@/lib/auth'
-import { findClientByName } from '@/lib/typeform-helpers'
+import { findClientByName, extractClientNameFromTranscript } from '@/lib/typeform-helpers'
 import { generateCoachActions, generateTranscriptSummary, generatePositiveHighlights, ApiKeyMissingError, AnthropicApiError } from '@/lib/transcript-ai'
 import { createAlertsFromCoachActions } from '@/lib/call-alerts'
 import { logger } from '@/lib/logger'
@@ -212,6 +212,26 @@ export async function POST(request: NextRequest) {
           lastName
         )
         if (client) clientId = client.id
+      }
+    }
+
+    // Fallback: extract client name from transcript content itself
+    if (!clientId) {
+      const extracted = extractClientNameFromTranscript(transcript)
+      if (extracted && extracted.firstName) {
+        log.info('Trying transcript-based name extraction fallback', {
+          firstName: extracted.firstName,
+          lastName: extracted.lastName,
+        })
+        const client = await findClientByName(
+          supabase,
+          extracted.firstName,
+          extracted.lastName
+        )
+        if (client) {
+          clientId = client.id
+          log.info('Client matched via transcript content', { clientId: client.id })
+        }
       }
     }
 
