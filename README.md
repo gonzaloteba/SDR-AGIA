@@ -1,44 +1,22 @@
-# Zalud Coach Dashboard
+# SDR AGIA
 
-[![Deploy with Vercel](https://vercel.com/button)](https://coach-dash-board.vercel.app)
+Built with Next.js + Supabase.
 
-Dashboard interactivo para los coaches de Zalud - monitoreo de entrega de servicio de coaching de salud.
+## Getting Started
 
-## Tech Stack
+1. Copy the environment variables:
 
-- **Next.js 14** (App Router) + TypeScript
-- **Tailwind CSS** + shadcn/ui
-- **Supabase** (PostgreSQL + Auth + Realtime)
-- **Recharts** para gráficos
-- **Vercel** para deploy
+```bash
+cp .env.local.example .env.local
+```
 
-## Configuración
+2. Fill in your Supabase credentials in `.env.local`
 
-1. Clona el repositorio
-2. Copia `.env.local.example` a `.env.local` y configura las variables
-3. Ejecuta las migraciones SQL en Supabase (`supabase/migrations/001_initial_schema.sql`)
-4. Instala dependencias y ejecuta:
+3. Install dependencies and run:
 
 ```bash
 npm install
 npm run dev
 ```
 
-## Estructura
-
-- `/dashboard` - Vista general con KPIs
-- `/dashboard/clients` - Lista de clientes con sistema de semáforo
-- `/dashboard/clients/[id]` - Detalle individual del cliente
-- `/dashboard/alerts` - Centro de alertas
-- `/api/webhooks/typeform` - Webhook para check-ins de Typeform
-- `/api/cron/generate-alerts` - Cron job diario para generar alertas
-
-## Variables de Entorno
-
-| Variable | Descripción |
-|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | URL del proyecto Supabase |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Clave anon de Supabase |
-| `SUPABASE_SERVICE_ROLE_KEY` | Clave service role |
-| `TYPEFORM_WEBHOOK_SECRET` | Secret para webhooks de Typeform |
-| `CRON_SECRET` | Secret para el cron job |
+Open [http://localhost:3000](http://localhost:3000).
